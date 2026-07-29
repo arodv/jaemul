@@ -140,6 +140,15 @@
   .tab.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
   tbody tr.clickrow{cursor:pointer}
   tbody tr.clickrow:hover{background:#EFF6FF}
+  /* 상태 요약 칩 */
+  .status-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .status-chip{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;transition:.12s}
+  .status-chip:hover{border-color:var(--scan)}
+  .status-chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .status-chip .dot{width:9px;height:9px;border-radius:50%}
+  .status-chip .n{font-weight:800;font-variant-numeric:tabular-nums}
+  /* 특이사항 셀 */
+  td.note-cell{max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-2)}
   /* 기관 상세 안 통계 */
   .inst-stats{margin-top:22px;border-top:1px solid var(--line);padding-top:18px}
   .inst-stats h4{font-size:15px;font-weight:700;margin-bottom:3px}
@@ -206,7 +215,7 @@
   <div class="top-inner">
     <div class="brand">
       <div class="logo"><span></span></div>
-      <div><h1>재물조사 관리</h1><p>디비소프트뱅크 · RFID 물품관리</p></div>
+      <div><h1>재물조사현황관리</h1><p>디비소프트뱅크 · RFID 물품관리</p></div>
     </div>
     <div class="controls">
       <span class="saved" id="savedBadge"><i id="syncDot"></i><span id="syncText">연결 중…</span></span>
@@ -251,20 +260,21 @@
 
     <!-- 뷰 1: 기관 목록 -->
     <div id="viewList">
+      <div class="status-bar" id="statusBar"></div>
       <div class="tablewrap">
         <div class="tbar">
           <h3 id="tblTitle">기관별 현황</h3>
           <div class="tools">
-            <input class="inp" id="search" placeholder="기관·담당자 검색">
+            <input class="inp" id="search" placeholder="기관·담당자·특이사항 검색">
             <select class="inp" id="fRegion"><option value="">전체 권역</option></select>
-            <select class="inp" id="fStatus"><option value="">전체 상태</option></select>
+            <select class="inp" id="fStatus"><option value="">전체 진행상태</option></select>
           </div>
         </div>
         <div class="tscroll">
           <table>
             <thead><tr>
               <th>연번</th><th>권역</th><th>기관명</th><th>담당자</th>
-              <th>전체교육</th><th>진행상태</th>
+              <th>교육</th><th>조사상태</th><th>특이사항</th>
               <th class="num">물품수</th><th class="num">리딩수</th><th class="num">재발행</th>
               <th class="num">인식률</th><th class="num">재발행률</th>
             </tr></thead>
@@ -315,13 +325,13 @@
         <div class="field"><label>연락처</label><input id="f_phone" placeholder="예: 031-000-0000"></div>
         <div class="field"><label>전체교육 여부</label>
           <select id="f_edu"><option value="">선택</option><option>미실시</option><option>일정협의중</option><option>실시예정</option><option>실시완료</option><option>해당없음</option></select></div>
-        <div class="field"><label>진행상태</label>
+        <div class="field"><label>재물조사 진행상태</label>
           <select id="f_status"><option value="">선택</option><option>대기</option><option>일정협의중</option><option>진행중</option><option>완료</option><option>보류</option></select></div>
         <div class="field"><label>전체 물품수</label><input id="f_total" type="number" min="0" placeholder="태그 부착 자산수"></div>
         <div class="field"><label>리딩(인식) 수</label><input id="f_read" type="number" min="0" placeholder="실제 읽힌 수"></div>
         <div class="field"><label>재발행 수량</label><input id="f_reissue" type="number" min="0" placeholder="재발행 태그수"></div>
-        <div class="field full"><label>장비현황</label><input id="f_equipment" placeholder="예: 리더기 2대, 발행기 1대, 안테나 4개"></div>
-        <div class="field full"><label>특이사항</label><textarea id="f_note" rows="2" placeholder="특이사항·메모를 자유롭게 적으세요"></textarea></div>
+        <div class="field full"><label>장비현황</label><input id="f_equipment"></div>
+        <div class="field full"><label>특이사항</label><textarea id="f_note" rows="2"></textarea></div>
         <div class="field full"><span class="hint">인식률·재발행률은 물품수를 기준으로 자동 계산됩니다.</span></div>
       </div>
       <div id="instStatsWrap" class="inst-stats hidden">
@@ -548,7 +558,7 @@ function refresh(){
   document.getElementById('dash').classList.toggle('hidden',!has);
   document.getElementById('welcome').classList.toggle('hidden',has);
   if(has){
-    if(curView==='list'){ buildFilters(); renderTable(); }
+    if(curView==='list'){ renderStatusBar(); buildFilters(); renderTable(); }
     else renderYearStats();
   }
   document.getElementById('foot').textContent=`${CUR}년 · 지원기관 ${list.length}곳`;
@@ -626,28 +636,30 @@ function buildFilters(){
   const regions=[...new Set(list.map(i=>i.region).filter(Boolean))];
   const stats=[...new Set(list.map(i=>i.status).filter(Boolean))];
   rSel.innerHTML='<option value="">전체 권역</option>'+regions.map(r=>`<option>${r}</option>`).join('');
-  sSel.innerHTML='<option value="">전체 상태</option>'+stats.map(s=>`<option>${s}</option>`).join('');
+  sSel.innerHTML='<option value="">전체 진행상태</option>'+stats.map(s=>`<option>${esc(s)}</option>`).join('');
   rSel.value=rv; sSel.value=sv;
-  document.getElementById('search').oninput=renderTable; rSel.onchange=renderTable; sSel.onchange=renderTable;
+  document.getElementById('search').oninput=renderTable; rSel.onchange=renderTable; sSel.onchange=()=>{renderTable();renderStatusBar();};
 }
 
 function renderTable(){
   const list=DB.years[CUR]||[];
   const q=norm(document.getElementById('search').value).toLowerCase();
   const fr=document.getElementById('fRegion').value, fs=document.getElementById('fStatus').value;
-  const rows=list.filter(i=>{ if(fr&&i.region!==fr)return false; if(fs&&i.status!==fs)return false; if(q&&!(`${i.name} ${i.manager}`.toLowerCase().includes(q)))return false; return true; });
+  const rows=list.filter(i=>{ if(fr&&i.region!==fr)return false; if(fs&&i.status!==fs)return false; if(q&&!(`${i.name} ${i.manager} ${i.note||''}`.toLowerCase().includes(q)))return false; return true; });
   document.getElementById('tblTitle').textContent=`기관별 현황 (${rows.length})`;
   const tb=document.getElementById('tbody');
-  if(!rows.length){ tb.innerHTML=`<tr class="empty-row"><td colspan="11">조건에 맞는 기관이 없습니다.</td></tr>`; return; }
+  if(!rows.length){ tb.innerHTML=`<tr class="empty-row"><td colspan="12">조건에 맞는 기관이 없습니다.</td></tr>`; return; }
   const pill=(t,c)=>t?`<span class="pill" style="color:${c};background:${c}1a">${esc(t)}</span>`:'<span class="muted-cell">—</span>';
   tb.innerHTML=rows.map((i,idx)=>{
     const sc=STATUS_COLORS[i.status]||'#8896A8', ec=EDU_COLORS[i.edu]||'#8896A8';
+    const noteOneline=(i.note||'').replace(/\s+/g,' ').trim();
     return `<tr class="clickrow" onclick="openDetail('${i.id}')">
       <td class="num">${idx+1}</td>
       <td>${i.region?esc(i.region):'<span class="muted-cell">—</span>'}</td>
       <td style="font-weight:600">${esc(i.name)||'—'}</td>
       <td>${i.manager?esc(i.manager):'<span class="muted-cell">—</span>'}</td>
       <td>${pill(i.edu,ec)}</td><td>${pill(i.status,sc)}</td>
+      <td class="note-cell" title="${esc(noteOneline)}">${noteOneline?esc(noteOneline):'<span class="muted-cell">—</span>'}</td>
       <td class="num">${fmtInt(i.total)}</td>
       <td class="num">${fmtInt(i.read)}</td>
       <td class="num">${fmtInt(i.reissue)}</td>
@@ -656,6 +668,19 @@ function renderTable(){
     </tr>`;
   }).join('');
 }
+
+/* ---------- 진행상태 요약 칩 ---------- */
+function renderStatusBar(){
+  const list=DB.years[CUR]||[];
+  const counts={}; list.forEach(i=>{ if(i.status)counts[i.status]=(counts[i.status]||0)+1; });
+  const cur=document.getElementById('fStatus').value;
+  let html=`<div class="status-chip ${!cur?'active':''}" onclick="filterStatus('')"><span>전체</span><span class="n">${list.length}</span></div>`;
+  const order=['완료','진행중','실시예정','일정협의중','대기','보류'];
+  Object.keys(counts).sort((a,b)=>{ const ia=order.indexOf(a),ib=order.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); })
+    .forEach(k=>{ const c=STATUS_COLORS[k]||'#8896A8'; html+=`<div class="status-chip ${cur===k?'active':''}" onclick="filterStatus('${k}')"><span class="dot" style="background:${c}"></span><span>${esc(k)}</span><span class="n">${counts[k]}</span></div>`; });
+  document.getElementById('statusBar').innerHTML=html;
+}
+window.filterStatus=s=>{ document.getElementById('fStatus').value=s; renderTable(); renderStatusBar(); };
 
 /* ---------- 기관 연도별 이력 ---------- */
 function instHistory(name){
