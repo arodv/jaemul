@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>재물조사 관리 · 디비소프트뱅크</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#14233B;--ink-2:#243A5E;--paper:#F5F7FA;--card:#FFFFFF;--line:#E4E9F0;
+    --text:#1B2A41;--muted:#6B7A90;--scan:#0FB5AE;--scan-d:#0A8F89;--reissue:#F0993B;--reissue-d:#D97D1E;
+    --good:#12A150;--amber:#E8A33D;--slate:#8896A8;--wash:#EEF3F8;--danger:#D24B4B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Pretendard',system-ui,-apple-system,'Malgun Gothic',sans-serif;background:var(--paper);color:var(--text);line-height:1.5;font-feature-settings:"tnum";letter-spacing:-0.01em}
+  .wrap{max-width:1220px;margin:0 auto;padding:0 20px 64px}
+  /* 헤더 */
+  header.top{background:linear-gradient(105deg,var(--ink),var(--ink-2));color:#fff;position:relative;overflow:hidden}
+  header.top::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0 38px,rgba(15,181,174,.06) 38px 40px)}
+  .top-inner{max-width:1220px;margin:0 auto;padding:20px;position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:13px}
+  .logo{width:40px;height:40px;border:1.5px solid rgba(255,255,255,.35);border-radius:9px;display:grid;place-items:center}
+  .logo span{width:16px;height:16px;border:2px solid var(--scan);border-radius:3px;position:relative}
+  .logo span::before{content:"";position:absolute;left:50%;top:2px;bottom:2px;width:2px;background:var(--scan);transform:translateX(-50%);animation:scan 2.4s ease-in-out infinite}
+  @keyframes scan{0%,100%{opacity:.25;transform:translateX(-50%) scaleY(.6)}50%{opacity:1;transform:translateX(-50%) scaleY(1)}}
+  .brand h1{font-size:17px;font-weight:700}
+  .brand p{font-size:12px;color:rgba(255,255,255,.62);font-weight:500;margin-top:1px}
+  .controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .sel-year{appearance:none;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.28);padding:9px 34px 9px 14px;border-radius:9px;font:inherit;font-size:14px;font-weight:700;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23fff' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center}
+  .btn{display:inline-flex;align-items:center;gap:7px;background:var(--scan);color:#04302e;border:none;padding:10px 15px;border-radius:9px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;transition:.12s;white-space:nowrap}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(15,181,174,.35)}
+  .btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  .btn svg{width:15px;height:15px}
+  .btn.ghost{background:rgba(255,255,255,.12);color:#fff}
+  .btn.ghost:hover{box-shadow:none;background:rgba(255,255,255,.2)}
+  /* 저장 상태 뱃지 */
+  .saved{font-size:12px;color:rgba(255,255,255,.7);display:inline-flex;align-items:center;gap:5px}
+  .saved i{width:7px;height:7px;border-radius:50%;background:var(--scan);display:inline-block}
+
+  /* 툴바 */
+  .subbar{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:20px}
+  .subbar .spacer{margin-left:auto}
+  .obtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--ink-2);padding:9px 14px;border-radius:9px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:.12s;white-space:nowrap}
+  .obtn:hover{border-color:var(--scan);color:var(--scan-d)}
+  .obtn.warn:hover{border-color:var(--danger);color:var(--danger)}
+  .obtn.solid{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .obtn.solid:hover{background:var(--ink-2);color:#fff}
+  .obtn svg{width:15px;height:15px}
+
+  /* 카드 */
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .card .lab{font-size:12.5px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+  .card .val{font-size:29px;font-weight:800;margin-top:9px;letter-spacing:-0.03em;line-height:1}
+  .card .sub{font-size:12px;color:var(--slate);margin-top:7px}
+  .card .bar{height:5px;border-radius:3px;background:var(--wash);margin-top:12px;overflow:hidden}
+  .card .bar i{display:block;height:100%;border-radius:3px}
+  .card.accent-scan .val{color:var(--scan-d)} .card.accent-scan .bar i{background:var(--scan)}
+  .card.accent-reissue .val{color:var(--reissue-d)} .card.accent-reissue .bar i{background:var(--reissue)}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+  .grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;margin-top:14px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .panel h3{font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+  .panel h3 .leg{display:flex;gap:14px;font-size:12px;font-weight:600;color:var(--muted)}
+  .panel h3 .leg i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;vertical-align:middle}
+  .panel .cap{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+  .chartbox svg{width:100%;height:auto;display:block}
+  .dist{display:flex;flex-direction:column;gap:11px;margin-top:6px}
+  .drow{display:grid;grid-template-columns:82px 1fr 42px;align-items:center;gap:10px}
+  .drow .nm{font-size:13px;font-weight:600}
+  .drow .tk{height:22px;border-radius:6px;background:var(--wash);overflow:hidden}
+  .drow .tk i{display:block;height:100%;border-radius:6px}
+  .drow .ct{font-size:13px;font-weight:700;text-align:right;color:var(--ink-2)}
+
+  /* 테이블 */
+  .tablewrap{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .tbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:16px 20px 14px;border-bottom:1px solid var(--line)}
+  .tbar h3{font-size:15px;font-weight:700}
+  .tbar .tools{display:flex;gap:8px;flex-wrap:wrap}
+  .inp{border:1px solid var(--line);border-radius:9px;padding:8px 12px;font:inherit;font-size:13px;background:#fff;color:var(--text)}
+  .inp:focus-visible{outline:2px solid var(--scan);outline-offset:0}
+  input.inp{min-width:170px}
+  .tscroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:880px}
+  thead th{background:var(--ink);color:#fff;font-weight:600;text-align:left;padding:11px 13px;white-space:nowrap;font-size:12.5px}
+  thead th.num{text-align:right}thead th.ctr{text-align:center}
+  tbody td{padding:9px 13px;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+  tbody td.num{text-align:right}tbody td.ctr{text-align:center}
+  tbody tr:hover{background:var(--wash)}
+  tbody tr:last-child td{border-bottom:none}
+  .pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700}
+  .rate{font-weight:700}.rate.hi{color:var(--scan-d)}.rate.mid{color:var(--amber)}.rate.lo{color:var(--danger)}
+  .rate.re-lo{color:var(--good)}.rate.re-mid{color:var(--reissue-d)}.rate.re-hi{color:var(--danger)}
+  .muted-cell{color:var(--slate)}
+  input.cell-inp{width:76px;text-align:right;border:none;border-bottom:1.5px solid var(--line);background:#FFFDF3;padding:5px 6px;font:inherit;font-size:13px;color:#0000CC;font-weight:600;border-radius:4px 4px 0 0;font-variant-numeric:tabular-nums}
+  input.cell-inp:focus{outline:none;border-bottom-color:var(--scan);background:#F0FCFB}
+  input.cell-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .rowbtn{border:none;background:none;cursor:pointer;padding:5px;border-radius:6px;color:var(--slate);transition:.12s}
+  .rowbtn:hover{background:var(--wash);color:var(--ink-2)}
+  .rowbtn.del:hover{background:#FDECEC;color:var(--danger)}
+  .rowbtn svg{width:15px;height:15px;display:block}
+  .empty-row td{text-align:center;color:var(--muted);padding:34px}
+
+  /* 빈 상태(데이터 없음) */
+  .welcome{margin:44px auto;max-width:620px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:44px 34px;text-align:center}
+  .welcome .ic{width:58px;height:58px;margin:0 auto 18px;border-radius:14px;background:var(--wash);display:grid;place-items:center;color:var(--ink-2)}
+  .welcome .ic svg{width:28px;height:28px}
+  .welcome h2{font-size:21px;font-weight:700;margin-bottom:8px}
+  .welcome p{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:24px}
+  .welcome .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+  /* 모달 */
+  .modal-bg{position:fixed;inset:0;background:rgba(20,35,59,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;backdrop-filter:blur(2px)}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff;border-radius:16px;width:100%;max-width:860px;max-height:90vh;overflow:auto;box-shadow:0 24px 60px rgba(20,35,59,.35)}
+  .modal .mh{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:between;position:sticky;top:0;background:#fff}
+  .modal .mh h3{font-size:17px;font-weight:700;flex:1}
+  .modal .mx{border:none;background:none;cursor:pointer;font-size:22px;color:var(--slate);line-height:1}
+  .modal .mb{padding:20px 24px}
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field.full{grid-column:1/-1}
+  .field label{font-size:12.5px;font-weight:600;color:var(--ink-2)}
+  .field input,.field select,.field textarea{border:1px solid var(--line);border-radius:9px;padding:9px 11px;font:inherit;font-size:14px;background:#fff;color:var(--text);width:100%}
+  .field textarea{resize:vertical;min-height:46px;line-height:1.5}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--scan);outline-offset:0;border-color:transparent}
+  .field .hint{font-size:11px;color:var(--slate)}
+  .mf{padding:16px 24px 22px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--line);position:sticky;bottom:0;background:#fff}
+
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:#fff;padding:12px 20px;border-radius:11px;font-size:13.5px;font-weight:600;box-shadow:0 10px 30px rgba(20,35,59,.3);z-index:99;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  footer{margin-top:30px;text-align:center;color:var(--slate);font-size:12px;line-height:1.7}
+  .hidden{display:none!important}
+  /* 탭 */
+  .tabs{display:inline-flex;background:var(--wash);border-radius:10px;padding:3px;gap:2px}
+  .tab{border:none;background:none;padding:8px 18px;border-radius:8px;font:inherit;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;transition:.12s}
+  .tab.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  tbody tr.clickrow{cursor:pointer}
+  tbody tr.clickrow:hover{background:#EFF6FF}
+  /* 기관 상세 안 통계 */
+  .inst-stats{margin-top:22px;border-top:1px solid var(--line);padding-top:18px}
+  .inst-stats h4{font-size:15px;font-weight:700;margin-bottom:3px}
+  .inst-stats .cap{font-size:12px;color:var(--muted);margin-bottom:12px}
+  .det-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:16px}
+  .det-card{background:var(--wash);border-radius:11px;padding:13px 12px;text-align:center}
+  .det-card .l{font-size:11px;color:var(--muted);font-weight:600}
+  .det-card .v{font-size:20px;font-weight:800;margin-top:5px;letter-spacing:-0.02em}
+  .det-card.scan{background:#E9FAF8} .det-card.scan .v{color:var(--scan-d)}
+  .det-card.reissue{background:#FEF3E7} .det-card.reissue .v{color:var(--reissue-d)}
+  .charts-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:6px}
+  .chart-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 14px 8px}
+  .chart-t{font-size:12.5px;font-weight:700;color:var(--ink-2);margin-bottom:6px}
+  .chart-card .chartbox{min-height:150px}
+  @media(max-width:760px){ .det-cards{grid-template-columns:repeat(2,1fr)} .charts-2{grid-template-columns:1fr} }
+  .mini-tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:14px}
+  .mini-tbl th{background:var(--ink);color:#fff;padding:7px 9px;text-align:right;font-weight:600;font-size:11.5px}
+  .mini-tbl th:first-child{text-align:left}
+  .mini-tbl td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+  .mini-tbl td:first-child{text-align:left;font-weight:600}
+  .mini-tbl tr:last-child td{border-bottom:none}
+  .banner{margin-top:16px;border-radius:12px;padding:14px 18px;font-size:13.5px;display:none;gap:11px;line-height:1.6}
+  .banner.show{display:block}
+  .banner.err{background:#FDECEC;border:1px solid #F5C6C6;color:#8B2E2E}
+  .banner.warn{background:#FEF6E7;border:1px solid #F5E0B0;color:#7A5A12}
+  .banner.ok{background:#E9F9F1;border:1px solid #BEEAD3;color:#12704A}
+  .banner b{font-weight:700}
+  .banner code{background:rgba(0,0,0,.07);padding:1px 6px;border-radius:4px;font-size:12px}
+  .banner pre{background:#14233B;color:#e2e8f0;padding:11px 13px;border-radius:8px;margin-top:9px;overflow:auto;font-size:11.5px;line-height:1.5;white-space:pre}
+  /* 비밀번호 게이트 */
+  .gate{position:fixed;inset:0;background:linear-gradient(135deg,#14233B,#243A5E);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+  .gate.hidden{display:none}
+  .gate-card{background:#fff;border-radius:18px;padding:38px 32px;width:100%;max-width:400px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+  .gate-card .glogo{width:56px;height:56px;margin:0 auto 18px;border-radius:14px;background:var(--wash);display:grid;place-items:center;color:var(--ink)}
+  .gate-card .glogo svg{width:28px;height:28px}
+  .gate-card h2{font-size:20px;font-weight:700;margin-bottom:7px}
+  .gate-card p{color:var(--muted);font-size:13.5px;margin-bottom:22px;line-height:1.55}
+  .gate-card input{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font:inherit;font-size:15px;margin-bottom:11px;text-align:center;color:var(--text)}
+  .gate-card input:focus{outline:2px solid var(--scan);outline-offset:0;border-color:transparent}
+  .gate-card .gerr{color:var(--danger);font-size:12.5px;min-height:18px;margin-bottom:6px;font-weight:600}
+  .gate-card .btn{width:100%;justify-content:center;padding:12px}
+  @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.fgrid{grid-template-columns:1fr}}
+  @media(max-width:520px){.cards{grid-template-columns:1fr}}
+  @media print{.controls,.subbar,.tbar .tools,.rowbtn,.modal-bg,input.cell-inp{display:none!important}
+    thead th:last-child,tbody td:last-child{display:none}
+    header.top{background:var(--ink)!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+
+<div class="gate hidden" id="gate">
+  <div class="gate-card">
+    <div class="glogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+    <h2 id="gateTitle">비밀번호 입력</h2>
+    <p id="gateDesc">이 대시보드에 접속하려면 비밀번호가 필요합니다.</p>
+    <input type="password" id="gatePw" placeholder="비밀번호" autocomplete="current-password">
+    <input type="password" id="gatePw2" class="hidden" placeholder="비밀번호 확인" autocomplete="new-password">
+    <div class="gerr" id="gateErr"></div>
+    <button class="btn" id="gateBtn">확인</button>
+  </div>
+</div>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <div class="logo"><span></span></div>
+      <div><h1>재물조사 관리</h1><p>디비소프트뱅크 · RFID 물품관리</p></div>
+    </div>
+    <div class="controls">
+      <span class="saved" id="savedBadge"><i id="syncDot"></i><span id="syncText">연결 중…</span></span>
+      <button class="btn ghost" id="refreshBtn" title="클라우드에서 최신 데이터 불러오기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 019-9 9 9 0 016.4 2.6L21 8M21 3v5h-5M21 12a9 9 0 01-9 9 9 9 0 01-6.4-2.6L3 16M3 21v-5h5"/></svg>
+        새로고침
+      </button>
+      <select class="sel-year" id="yearSel"></select>
+      <button class="btn ghost" id="addYearBtn" title="새 연도 추가">＋ 연도</button>
+      <button class="btn" id="printBtn" onclick="window.print()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
+        인쇄
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="banner" id="banner"></div>
+  <!-- 상단 툴바 -->
+  <div class="subbar" id="subbar">
+    <div class="tabs">
+      <button class="tab active" id="tabList">기관 목록</button>
+      <button class="tab" id="tabStats">연도별 통계</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="obtn solid" id="addInstBtn">＋ 기관 추가</button>
+  </div>
+
+  <!-- 빈 상태 -->
+  <div id="welcome" class="welcome hidden">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg></div>
+    <h2 id="welcomeTitle">데이터를 시작해 볼까요?</h2>
+    <p>아래 버튼으로 기관을 추가하면 시작됩니다.<br>입력한 데이터는 클라우드에 자동 저장돼 함께 쓰는 분들과 공유됩니다.</p>
+    <div class="row">
+      <button class="btn" onclick="document.getElementById('addInstBtn').click()">＋ 기관 추가로 시작</button>
+    </div>
+  </div>
+
+  <!-- 대시보드 -->
+  <div id="dash" class="hidden">
+
+    <!-- 뷰 1: 기관 목록 -->
+    <div id="viewList">
+      <div class="tablewrap">
+        <div class="tbar">
+          <h3 id="tblTitle">기관별 현황</h3>
+          <div class="tools">
+            <input class="inp" id="search" placeholder="기관·담당자 검색">
+            <select class="inp" id="fRegion"><option value="">전체 권역</option></select>
+            <select class="inp" id="fStatus"><option value="">전체 상태</option></select>
+          </div>
+        </div>
+        <div class="tscroll">
+          <table>
+            <thead><tr>
+              <th>연번</th><th>권역</th><th>기관명</th><th>담당자</th>
+              <th>전체교육</th><th>진행상태</th>
+              <th class="num">물품수</th><th class="num">리딩수</th><th class="num">재발행</th>
+              <th class="num">인식률</th><th class="num">재발행률</th>
+            </tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <footer>
+        <div>행을 클릭하면 그 기관의 상세 데이터와 연도별 추이를 볼 수 있습니다.</div>
+        <div id="foot"></div>
+      </footer>
+    </div>
+
+    <!-- 뷰 2: 연도별 통계 -->
+    <div id="viewStats" class="hidden">
+      <div class="panel">
+        <h3>연도별 인식률 · 재발행률 추이
+          <span class="leg"><span><i style="background:var(--scan)"></i>인식률</span><span><i style="background:var(--reissue)"></i>재발행률</span></span>
+        </h3>
+        <div class="cap">전체 기관 합산(가중평균) · 매년 데이터가 쌓일수록 추세가 뚜렷해집니다</div>
+        <div class="chartbox" id="statChart"></div>
+      </div>
+      <div class="tablewrap">
+        <div class="tbar"><h3>연도별 요약</h3></div>
+        <div class="tscroll">
+          <table class="mini-tbl" style="min-width:640px">
+            <thead><tr><th>연도</th><th>지원기관</th><th>전체 물품수</th><th>리딩수</th><th>재발행</th><th>인식률</th><th>재발행률</th></tr></thead>
+            <tbody id="statTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 기관 추가/수정 모달 -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="mh"><h3 id="modalTitle">기관 추가</h3><button class="mx" id="modalX">×</button></div>
+    <div class="mb">
+      <div class="fgrid">
+        <div class="field"><label>권역</label>
+          <select id="f_region"><option value="">선택</option><option>서울</option><option>경기</option><option>인천</option><option>강원</option><option>충청</option><option>전라</option><option>경상</option><option>제주</option></select></div>
+        <div class="field"><label>기관명 *</label><input id="f_name" placeholder="예: 고양시청"></div>
+        <div class="field"><label>주관부서</label><input id="f_dept" placeholder="예: 회계과"></div>
+        <div class="field"><label>담당자</label><input id="f_manager" placeholder="예: 홍길동 주무관"></div>
+        <div class="field"><label>연락처</label><input id="f_phone" placeholder="예: 031-000-0000"></div>
+        <div class="field"><label>전체교육 여부</label>
+          <select id="f_edu"><option value="">선택</option><option>미실시</option><option>일정협의중</option><option>실시예정</option><option>실시완료</option><option>해당없음</option></select></div>
+        <div class="field"><label>진행상태</label>
+          <select id="f_status"><option value="">선택</option><option>대기</option><option>일정협의중</option><option>진행중</option><option>완료</option><option>보류</option></select></div>
+        <div class="field"><label>전체 물품수</label><input id="f_total" type="number" min="0" placeholder="태그 부착 자산수"></div>
+        <div class="field"><label>리딩(인식) 수</label><input id="f_read" type="number" min="0" placeholder="실제 읽힌 수"></div>
+        <div class="field"><label>재발행 수량</label><input id="f_reissue" type="number" min="0" placeholder="재발행 태그수"></div>
+        <div class="field full"><label>장비현황</label><input id="f_equipment" placeholder="예: 리더기 2대, 발행기 1대, 안테나 4개"></div>
+        <div class="field full"><label>특이사항</label><textarea id="f_note" rows="2" placeholder="특이사항·메모를 자유롭게 적으세요"></textarea></div>
+        <div class="field full"><span class="hint">인식률·재발행률은 물품수를 기준으로 자동 계산됩니다.</span></div>
+      </div>
+      <div id="instStatsWrap" class="inst-stats hidden">
+        <h4>상세 통계</h4>
+        <div class="cap">현재 연도 수치와 연도별 추이를 한눈에</div>
+        <div class="det-cards" id="detCards"></div>
+        <div class="charts-2">
+          <div class="chart-card"><div class="chart-t">인식률 · 재발행률 추이</div><div class="chartbox" id="instChart"></div></div>
+          <div class="chart-card"><div class="chart-t">물품수 · 리딩수 (연도별)</div><div class="chartbox" id="instBarChart"></div></div>
+        </div>
+        <div id="instStatTable"></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="obtn warn hidden" id="modalDelete">삭제</button>
+      <div style="flex:1"></div>
+      <button class="obtn" id="modalCancel">취소</button>
+      <button class="btn" id="modalSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const DB_KEY='jaemul_db_v2';
+/* ===== Supabase (준실시간 클라우드 공유) ===== */
+const SB_URL='https://gltzozufhfcrvuzydxow.supabase.co';
+const SB_KEY='sb_publishable_YcwHAs9WtfCVd20BFHretA_mMuFmEp_';
+const ROW_ID=1;                 // app_data 테이블의 단일 행
+let sb=null;
+try{ if(window.supabase&&window.supabase.createClient) sb=window.supabase.createClient(SB_URL,SB_KEY); }catch(e){ console.warn('supabase init',e); }
+const STATUS_COLORS={'완료':'#12A150','진행중':'#0FB5AE','일정협의중':'#E8A33D','실시예정':'#5B8DEF','대기':'#8896A8','보류':'#D24B4B'};
+const EDU_COLORS={'실시완료':'#12A150','실시예정':'#5B8DEF','일정협의중':'#E8A33D','미실시':'#8896A8','해당없음':'#B7C0CC'};
+
+let DB={years:{}};          // {years:{ "2026":[inst,...] }}
+let CUR=null;               // 현재 연도(문자열)
+let editingId=null;         // 수정중 기관 id
+
+/* ---------- 유틸 ---------- */
+const norm=v=>(v==null)?'':String(v).replace(/\s+/g,' ').trim();
+const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const isNum=v=>v!==''&&v!=null&&!isNaN(Number(v));
+const numOrNull=v=>isNum(v)?Math.max(0,Math.round(Number(v))):null;
+const fmtInt=n=>n==null?'—':Number(n).toLocaleString('ko-KR');
+const fmtPct=f=>(f==null||isNaN(f))?'—':(f*100).toFixed(1)+'%';
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const recogClass=f=>f==null?'':(f>=0.98?'hi':f>=0.9?'mid':'lo');
+const reClass=f=>f==null?'':(f<=0.03?'re-lo':f<=0.08?'re-mid':'re-hi');
+function calc(i){ i.recog=(i.total&&i.read!=null)?i.read/i.total:null; i.reRate=(i.total&&i.reissue!=null)?i.reissue/i.total:null; }
+
+/* ---------- 저장/로드 (로컬 캐시 + 클라우드) ---------- */
+function saveLocalOnly(){ try{ localStorage.setItem(DB_KEY,JSON.stringify(DB)); }catch(e){} }
+function save(){
+  saveLocalOnly();               // 1) 로컬 즉시(빠름·오프라인 대비)
+  scheduleCloudSave();           // 2) 클라우드 반영(디바운스)
+}
+function loadLocal(){
+  try{ const s=localStorage.getItem(DB_KEY); if(s){ DB=JSON.parse(s); return true; } }catch(e){}
+  return false;
+}
+
+/* 동기화 상태 표시 */
+function setSync(state){
+  const dot=document.getElementById('syncDot'), txt=document.getElementById('syncText');
+  if(!dot)return;
+  const map={connecting:['#B7C0CC','연결 중…'],saving:['#E8A33D','저장 중…'],saved:['#0FB5AE','클라우드 저장됨'],
+             offline:['#8896A8','오프라인(로컬만)'],error:['#D24B4B','동기화 오류']};
+  const [c,t]=map[state]||map.saved; dot.style.background=c; txt.textContent=t;
+}
+
+/* 클라우드 저장(디바운스) */
+let cloudTimer;
+function scheduleCloudSave(){
+  if(!sb){ setSync('offline'); return; }
+  setSync('saving'); clearTimeout(cloudTimer);
+  cloudTimer=setTimeout(cloudSave,1000);
+}
+async function cloudSave(){
+  if(!sb){ setSync('offline'); return; }
+  try{
+    const {error}=await sb.from('app_data').upsert({id:ROW_ID,data:DB});
+    if(error) throw error;
+    setSync('saved'); hideBanner(); lastSave=Date.now();
+  }catch(e){ console.warn('cloudSave',e); setSync('error'); showTableError(e); }
+}
+
+/* 클라우드 로드 */
+async function cloudLoad(){
+  if(!sb){ setSync('offline'); return false; }
+  setSync('connecting');
+  try{
+    const {data,error}=await sb.from('app_data').select('data').eq('id',ROW_ID).maybeSingle();
+    if(error) throw error;
+    if(data&&data.data&&data.data.years){ DB=data.data; saveLocalOnly(); }
+    else { await sb.from('app_data').upsert({id:ROW_ID,data:DB}); } // 최초 행 생성
+    setSync('saved'); hideBanner(); return true;
+  }catch(e){ console.warn('cloudLoad',e); setSync('error'); showTableError(e); return false; }
+}
+
+/* 배너 */
+function hideBanner(){ const b=document.getElementById('banner'); if(b)b.className='banner'; }
+function showTableError(e){
+  const b=document.getElementById('banner'); if(!b)return;
+  const msg=(e&&(e.message||e.hint||''))+''; 
+  if(/app_data|relation|does not exist|schema cache|table/i.test(msg)){
+    b.className='banner err show';
+    b.innerHTML=`<b>클라우드 테이블이 아직 없습니다.</b> Supabase 화면 왼쪽 <b>SQL Editor</b>에서 아래를 붙여넣고 <b>Run</b> 한 뒤, 이 페이지 <b>새로고침</b> 버튼을 눌러주세요.
+      <pre>create table app_data (id bigint primary key, data jsonb);
+insert into app_data (id, data) values (1, '{"years":{}}');
+alter table app_data enable row level security;
+create policy "allow all" on app_data for all using (true) with check (true);</pre>`;
+  } else {
+    b.className='banner warn show';
+    b.innerHTML=`<b>클라우드 연결에 문제가 있습니다.</b> 잠시 후 새로고침해 보세요. (현재 입력은 이 브라우저에는 저장됩니다) <br><code>${msg.slice(0,140)}</code>`;
+  }
+}
+
+/* ---------- 비밀번호 게이트 ---------- */
+let authed=false, editing=false, lastSave=0, autoTimer=null;
+const AUTH_KEY='jaemul_auth';
+function safeGet(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
+async function sha(s){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+function passGate(){ authed=true; document.getElementById('gate').classList.add('hidden'); }
+async function gateFlow(){
+  const gate=document.getElementById('gate'),T=document.getElementById('gateTitle'),D=document.getElementById('gateDesc');
+  const pw=document.getElementById('gatePw'),pw2=document.getElementById('gatePw2'),err=document.getElementById('gateErr'),btn=document.getElementById('gateBtn');
+  const hash=DB.meta&&DB.meta.pwHash; err.textContent='';
+  if(!hash){
+    T.textContent='접속 비밀번호 설정'; D.textContent='처음 실행이네요. 함께 쓸 접속 비밀번호를 정해주세요.';
+    pw.placeholder='새 비밀번호'; pw.value=''; pw2.value=''; pw2.classList.remove('hidden'); btn.textContent='설정하고 시작';
+    btn.onclick=async()=>{ const a=pw.value,b=pw2.value;
+      if(a.length<4){err.textContent='4자 이상 입력하세요.';return;}
+      if(a!==b){err.textContent='두 비밀번호가 일치하지 않습니다.';return;}
+      if(!DB.meta)DB.meta={}; DB.meta.pwHash=await sha(a);
+      save(); try{localStorage.setItem(AUTH_KEY,DB.meta.pwHash);}catch(e){} passGate(); toast('비밀번호를 설정했습니다.'); };
+  } else {
+    if(safeGet(AUTH_KEY)===hash){ passGate(); return; }
+    T.textContent='비밀번호 입력'; D.textContent='이 대시보드에 접속하려면 비밀번호가 필요합니다.';
+    pw.placeholder='비밀번호'; pw.value=''; pw2.classList.add('hidden'); btn.textContent='확인';
+    btn.onclick=async()=>{ const h=await sha(pw.value);
+      if(h===hash){ try{localStorage.setItem(AUTH_KEY,hash);}catch(e){} passGate(); }
+      else{ err.textContent='비밀번호가 올바르지 않습니다.'; pw.value=''; pw.focus(); } };
+  }
+  pw.onkeydown=e=>{ if(e.key==='Enter')btn.click(); }; pw2.onkeydown=e=>{ if(e.key==='Enter')btn.click(); };
+  gate.classList.remove('hidden'); setTimeout(()=>pw.focus(),50);
+}
+
+/* ---------- 자동 갱신(준실시간) ---------- */
+async function silentRefresh(){
+  if(!sb||!authed||editing) return;
+  if(Date.now()-lastSave<3000) return;         // 방금 내 저장 직후엔 스킵(덮어쓰기 방지)
+  const before=JSON.stringify(DB);
+  await cloudLoad();
+  if(JSON.stringify(DB)!==before){
+    const yrs=Object.keys(DB.years); if(yrs.length&&!DB.years[CUR])CUR=yrs.sort()[yrs.length-1];
+    buildYearSel(); refresh();
+  }
+}
+function startAutoRefresh(){
+  if(autoTimer)clearInterval(autoTimer);
+  autoTimer=setInterval(()=>{ if(!document.hidden) silentRefresh(); },45000);   // 45초마다
+  window.addEventListener('focus',silentRefresh);                                // 창 복귀 시
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) silentRefresh(); });
+  document.addEventListener('focusin',e=>{ if(e.target.classList&&e.target.classList.contains('cell-inp'))editing=true; });
+  document.addEventListener('focusout',e=>{ if(e.target.classList&&e.target.classList.contains('cell-inp'))setTimeout(()=>{editing=false;},600); });
+}
+
+/* ---------- 초기화 ---------- */
+async function boot(){
+  loadLocal();                   // 캐시로 첫 화면 빠르게
+  await cloudLoad();             // 클라우드 최신으로 갱신
+  const yrs=Object.keys(DB.years);
+  if(yrs.length===0){ CUR=String(new Date().getFullYear()); DB.years[CUR]=[]; }
+  else CUR=yrs.sort()[yrs.length-1];
+  buildYearSel(); refresh();
+  authed=true;                   // 비밀번호 없이 바로 사용
+  startAutoRefresh();            // 자동 갱신 시작
+}
+
+/* 새로고침: 클라우드에서 최신 다시 */
+async function refreshFromCloud(){
+  setSync('connecting');
+  const ok=await cloudLoad();
+  const yrs=Object.keys(DB.years);
+  if(yrs.length&&!DB.years[CUR]) CUR=yrs.sort()[yrs.length-1];
+  buildYearSel(); refresh();
+  if(ok) toast('최신 데이터를 불러왔습니다.');
+}
+
+/* ---------- 연도 ---------- */
+function buildYearSel(){
+  const sel=document.getElementById('yearSel'); sel.innerHTML='';
+  Object.keys(DB.years).sort().forEach(y=>{ const o=document.createElement('option'); o.value=y; o.textContent=y+'년'; sel.appendChild(o); });
+  sel.value=CUR;
+  sel.onchange=()=>{ CUR=sel.value; refresh(); };
+}
+document.getElementById('addYearBtn').onclick=()=>{
+  const y=prompt('추가할 연도를 입력하세요 (예: 2027)'); if(!y)return;
+  const yr=String(parseInt(y,10)); if(isNaN(parseInt(y,10))){ toast('숫자 연도를 입력하세요.'); return; }
+  if(DB.years[yr]){ toast(yr+'년은 이미 있습니다.'); CUR=yr; buildYearSel(); refresh(); return; }
+  let base=[];
+  if(confirm(yr+'년에 현재 연도('+CUR+')의 기관 목록을 복사할까요?\n(물품수·리딩수·재발행수는 비웁니다)')){
+    base=(DB.years[CUR]||[]).map(i=>({...i,id:uid(),total:null,read:null,reissue:null,recog:null,reRate:null}));
+  }
+  DB.years[yr]=base; CUR=yr; save(); buildYearSel(); refresh();
+  toast(yr+'년을 추가했습니다.');
+};
+
+/* ---------- 뷰 전환 ---------- */
+let curView='list';
+function switchView(v){
+  curView=v;
+  document.getElementById('viewList').classList.toggle('hidden',v!=='list');
+  document.getElementById('viewStats').classList.toggle('hidden',v!=='stats');
+  document.getElementById('tabList').classList.toggle('active',v==='list');
+  document.getElementById('tabStats').classList.toggle('active',v==='stats');
+  refresh();
+}
+
+/* ---------- 전체 갱신 ---------- */
+function refresh(){
+  const list=DB.years[CUR]||[];
+  const has=list.length>0;
+  document.getElementById('dash').classList.toggle('hidden',!has);
+  document.getElementById('welcome').classList.toggle('hidden',has);
+  if(has){
+    if(curView==='list'){ buildFilters(); renderTable(); }
+    else renderYearStats();
+  }
+  document.getElementById('foot').textContent=`${CUR}년 · 지원기관 ${list.length}곳`;
+}
+
+function yearAgg(y){
+  const list=DB.years[y]||[]; let total=0,read=0,reissue=0,tv=false,rv=false,iv=false;
+  list.forEach(i=>{ if(i.total!=null){total+=i.total;tv=true;} if(i.read!=null){read+=i.read;rv=true;} if(i.reissue!=null){reissue+=i.reissue;iv=true;} });
+  return { year:Number(y), count:list.length, total:tv?total:null, read:rv?read:null, reissue:iv?reissue:null,
+           recog:(tv&&rv&&total)?read/total:null, reRate:(tv&&iv&&total)?reissue/total:null };
+}
+
+/* ---------- 추이 차트(공용) ---------- */
+function drawTrendChart(boxId,data,emptyMsg){
+  const box=document.getElementById(boxId); if(!box)return;
+  const d=data.filter(x=>x.recog!=null||x.reRate!=null);
+  if(d.length===0){ box.innerHTML=`<div style="padding:30px 10px;text-align:center;color:var(--muted);font-size:13px;line-height:1.7">${emptyMsg||'표시할 추이가 없습니다.'}</div>`; return; }
+  const W=560,H=230,P={t:16,r:16,b:32,l:44},iw=W-P.l-P.r,ih=H-P.t-P.b;
+  const yrs=d.map(x=>x.year),xmin=Math.min(...yrs),xmax=Math.max(...yrs);
+  const single=yrs.length===1;
+  const X=yr=>single?P.l+iw/2:P.l+(yr-xmin)/((xmax-xmin)||1)*iw, Y=f=>P.t+(1-f)*ih;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  [0,.25,.5,.75,1].forEach(g=>{ const yy=Y(g); svg+=`<line x1="${P.l}" y1="${yy}" x2="${W-P.r}" y2="${yy}" stroke="#EDF1F6"/><text x="${P.l-8}" y="${yy+4}" text-anchor="end" font-size="10.5" fill="#9AA6B4">${g*100}%</text>`; });
+  yrs.forEach(yr=>{ svg+=`<text x="${X(yr)}" y="${H-11}" text-anchor="middle" font-size="11" fill="#6B7A90" font-weight="600">${yr}</text>`; });
+  const draw=(k,c)=>{ const pts=d.filter(x=>x[k]!=null).map(x=>[X(x.year),Y(x[k])]); if(!pts.length)return'';
+    let s=''; if(pts.length>1) s+=`<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${c}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>`;
+    pts.forEach(p=>s+=`<circle cx="${p[0]}" cy="${p[1]}" r="${single?6:4.5}" fill="#fff" stroke="${c}" stroke-width="2.6"/>`); return s; };
+  svg+=draw('reRate','#F0993B')+draw('recog','#0FB5AE');
+  ['recog','reRate'].forEach(k=>{ const dd=d.filter(x=>x[k]!=null); if(!dd.length)return; const last=dd[dd.length-1]; const c=k==='recog'?'#0A8F89':'#D97D1E'; svg+=`<text x="${X(last.year)}" y="${Y(last[k])-11}" text-anchor="middle" font-size="12" font-weight="800" fill="${c}">${(last[k]*100).toFixed(1)}%</text>`; });
+  box.innerHTML=svg+`</svg>`;
+}
+
+/* ---------- 영역(산) 차트: 물품수·리딩수 ---------- */
+function drawAreaChart(boxId,data){
+  const box=document.getElementById(boxId); if(!box)return;
+  const d=data.filter(x=>x.total!=null||x.read!=null);
+  if(!d.length){ box.innerHTML=`<div style="padding:40px 10px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.6">물품수·리딩수를 입력하면<br>그래프가 나타납니다.</div>`; return; }
+  const W=520,H=210,P={t:22,r:14,b:32,l:46},iw=W-P.l-P.r,ih=H-P.t-P.b;
+  const max=Math.max(1,...d.map(x=>Math.max(x.total||0,x.read||0)));
+  const yrs=d.map(x=>x.year),xmin=Math.min(...yrs),xmax=Math.max(...yrs);
+  const single=yrs.length===1;
+  const X=yr=>single?P.l+iw/2:P.l+(yr-xmin)/((xmax-xmin)||1)*iw, Y=v=>P.t+ih-(v/max)*ih;
+  const fmtK=v=>v>=1000?(v/1000).toFixed(v>=10000?0:1)+'k':Math.round(v);
+  let svg=`<svg viewBox="0 0 ${W} ${H}">`;
+  for(let k=0;k<=4;k++){ const val=max*k/4, yy=P.t+ih-(k/4)*ih; svg+=`<line x1="${P.l}" y1="${yy}" x2="${W-P.r}" y2="${yy}" stroke="#EDF1F6"/><text x="${P.l-6}" y="${yy+4}" text-anchor="end" font-size="9.5" fill="#9AA6B4">${fmtK(val)}</text>`; }
+  yrs.forEach(yr=>{ svg+=`<text x="${X(yr)}" y="${H-11}" text-anchor="middle" font-size="11" fill="#6B7A90" font-weight="600">${yr}</text>`; });
+  const area=(k,fill,stroke)=>{ const pts=d.filter(x=>x[k]!=null).map(x=>[X(x.year),Y(x[k])]); if(!pts.length)return'';
+    let s=''; const base=P.t+ih;
+    if(pts.length>1){
+      s+=`<path d="M ${pts[0][0]} ${base} L ${pts.map(p=>p.join(' ')).join(' L ')} L ${pts[pts.length-1][0]} ${base} Z" fill="${fill}"/>`;
+      s+=`<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${stroke}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }
+    pts.forEach(p=>s+=`<circle cx="${p[0]}" cy="${p[1]}" r="${single?5:3.8}" fill="#fff" stroke="${stroke}" stroke-width="2.2"/>`); return s; };
+  svg+=area('total','rgba(157,176,198,0.28)','#9DB0C6')+area('read','rgba(15,181,174,0.30)','#0FB5AE');
+  svg+=`<rect x="${P.l}" y="5" width="9" height="9" rx="2" fill="#9DB0C6"/><text x="${P.l+13}" y="13" font-size="10" fill="#6B7A90">물품수</text>`;
+  svg+=`<rect x="${P.l+62}" y="5" width="9" height="9" rx="2" fill="#0FB5AE"/><text x="${P.l+75}" y="13" font-size="10" fill="#6B7A90">리딩수</text>`;
+  box.innerHTML=svg+`</svg>`;
+}
+
+/* ---------- 연도별 통계 뷰 ---------- */
+function renderYearStats(){
+  const data=Object.keys(DB.years).sort().map(y=>yearAgg(y));
+  drawTrendChart('statChart',data,'아직 추이가 없습니다. 기관에 물품수·리딩수를 입력하면 값이 잡히고, 해가 쌓이면 추세선이 그려집니다.');
+  document.getElementById('statTbody').innerHTML=data.map(a=>`<tr>
+    <td>${a.year}년</td><td>${fmtInt(a.count)}</td><td>${fmtInt(a.total)}</td>
+    <td>${fmtInt(a.read)}</td><td>${fmtInt(a.reissue)}</td>
+    <td style="color:var(--scan-d);font-weight:700">${fmtPct(a.recog)}</td>
+    <td style="color:var(--reissue-d);font-weight:700">${fmtPct(a.reRate)}</td></tr>`).join('');
+}
+
+function buildFilters(){
+  const list=DB.years[CUR]||[];
+  const rSel=document.getElementById('fRegion'),sSel=document.getElementById('fStatus');
+  const rv=rSel.value,sv=sSel.value;
+  const regions=[...new Set(list.map(i=>i.region).filter(Boolean))];
+  const stats=[...new Set(list.map(i=>i.status).filter(Boolean))];
+  rSel.innerHTML='<option value="">전체 권역</option>'+regions.map(r=>`<option>${r}</option>`).join('');
+  sSel.innerHTML='<option value="">전체 상태</option>'+stats.map(s=>`<option>${s}</option>`).join('');
+  rSel.value=rv; sSel.value=sv;
+  document.getElementById('search').oninput=renderTable; rSel.onchange=renderTable; sSel.onchange=renderTable;
+}
+
+function renderTable(){
+  const list=DB.years[CUR]||[];
+  const q=norm(document.getElementById('search').value).toLowerCase();
+  const fr=document.getElementById('fRegion').value, fs=document.getElementById('fStatus').value;
+  const rows=list.filter(i=>{ if(fr&&i.region!==fr)return false; if(fs&&i.status!==fs)return false; if(q&&!(`${i.name} ${i.manager}`.toLowerCase().includes(q)))return false; return true; });
+  document.getElementById('tblTitle').textContent=`기관별 현황 (${rows.length})`;
+  const tb=document.getElementById('tbody');
+  if(!rows.length){ tb.innerHTML=`<tr class="empty-row"><td colspan="11">조건에 맞는 기관이 없습니다.</td></tr>`; return; }
+  const pill=(t,c)=>t?`<span class="pill" style="color:${c};background:${c}1a">${esc(t)}</span>`:'<span class="muted-cell">—</span>';
+  tb.innerHTML=rows.map((i,idx)=>{
+    const sc=STATUS_COLORS[i.status]||'#8896A8', ec=EDU_COLORS[i.edu]||'#8896A8';
+    return `<tr class="clickrow" onclick="openDetail('${i.id}')">
+      <td class="num">${idx+1}</td>
+      <td>${i.region?esc(i.region):'<span class="muted-cell">—</span>'}</td>
+      <td style="font-weight:600">${esc(i.name)||'—'}</td>
+      <td>${i.manager?esc(i.manager):'<span class="muted-cell">—</span>'}</td>
+      <td>${pill(i.edu,ec)}</td><td>${pill(i.status,sc)}</td>
+      <td class="num">${fmtInt(i.total)}</td>
+      <td class="num">${fmtInt(i.read)}</td>
+      <td class="num">${fmtInt(i.reissue)}</td>
+      <td class="num rate ${recogClass(i.recog)}">${fmtPct(i.recog)}</td>
+      <td class="num rate ${reClass(i.reRate)}">${fmtPct(i.reRate)}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ---------- 기관 연도별 이력 ---------- */
+function instHistory(name){
+  return Object.keys(DB.years).sort().map(y=>{
+    const it=(DB.years[y]||[]).find(x=>x.name===name);
+    return {year:+y, recog:it?it.recog:null, reRate:it?it.reRate:null, total:it?it.total:null, read:it?it.read:null, reissue:it?it.reissue:null};
+  });
+}
+function renderInstDetail(name){
+  const cur=(DB.years[CUR]||[]).find(x=>x.name===name)||{};
+  document.getElementById('detCards').innerHTML=`
+    <div class="det-card"><div class="l">전체 물품수</div><div class="v">${fmtInt(cur.total)}</div></div>
+    <div class="det-card"><div class="l">리딩수</div><div class="v">${fmtInt(cur.read)}</div></div>
+    <div class="det-card"><div class="l">재발행</div><div class="v">${fmtInt(cur.reissue)}</div></div>
+    <div class="det-card scan"><div class="l">인식률</div><div class="v">${fmtPct(cur.recog)}</div></div>
+    <div class="det-card reissue"><div class="l">재발행률</div><div class="v">${fmtPct(cur.reRate)}</div></div>`;
+  const hist=instHistory(name);
+  drawTrendChart('instChart',hist,'다른 연도 데이터가 쌓이면<br>추이선이 그려집니다.');
+  drawAreaChart('instBarChart',hist);
+  const rows=hist.filter(h=>h.total!=null||h.recog!=null||h.reRate!=null);
+  document.getElementById('instStatTable').innerHTML = rows.length
+    ? `<table class="mini-tbl"><thead><tr><th>연도</th><th>물품수</th><th>리딩</th><th>재발행</th><th>인식률</th><th>재발행률</th></tr></thead><tbody>${rows.map(h=>`<tr><td>${h.year}년</td><td>${fmtInt(h.total)}</td><td>${fmtInt(h.read)}</td><td>${fmtInt(h.reissue)}</td><td style="color:var(--scan-d);font-weight:700">${fmtPct(h.recog)}</td><td style="color:var(--reissue-d);font-weight:700">${fmtPct(h.reRate)}</td></tr>`).join('')}</tbody></table>`
+    : '';
+}
+
+/* ---------- 모달(추가 / 상세·수정) ---------- */
+const modal=document.getElementById('modal');
+function openModal(){ editing=true; modal.classList.add('show'); }
+function closeModal(){ editing=false; modal.classList.remove('show'); editingId=null; }
+function fillForm(i){
+  f_region.value=i?.region||''; f_name.value=i?.name||''; f_dept.value=i?.dept||'';
+  f_manager.value=i?.manager||''; f_phone.value=i?.phone||''; f_edu.value=i?.edu||'';
+  f_status.value=i?.status||''; f_total.value=i?.total??''; f_read.value=i?.read??''; f_reissue.value=i?.reissue??'';
+  f_equipment.value=i?.equipment||''; f_note.value=i?.note||'';
+}
+function showStats(on){
+  document.getElementById('instStatsWrap').classList.toggle('hidden',!on);
+  document.getElementById('modalDelete').classList.toggle('hidden',!on);
+}
+document.getElementById('addInstBtn').onclick=()=>{ editingId=null; document.getElementById('modalTitle').textContent='기관 추가'; fillForm(null); showStats(false); openModal(); f_name.focus(); };
+window.openDetail=id=>{ const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); openModal(); };
+document.getElementById('modalX').onclick=closeModal;
+document.getElementById('modalCancel').onclick=closeModal;
+modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
+document.getElementById('modalSave').onclick=()=>{
+  const name=norm(f_name.value); if(!name){ toast('기관명을 입력하세요.'); f_name.focus(); return; }
+  const rec={ region:norm(f_region.value),name,dept:norm(f_dept.value),manager:norm(f_manager.value),phone:norm(f_phone.value),
+    edu:f_edu.value,status:f_status.value,total:numOrNull(f_total.value),read:numOrNull(f_read.value),reissue:numOrNull(f_reissue.value),
+    equipment:norm(f_equipment.value),note:(f_note.value||'').trim() };
+  if(rec.total!=null){
+    if(rec.read!=null && rec.read>rec.total){ if(!confirm('리딩(인식) 수가 전체 물품수보다 많습니다.\n그대로 저장할까요?')) return; }
+    if(rec.reissue!=null && rec.reissue>rec.total){ if(!confirm('재발행 수가 전체 물품수보다 많습니다.\n그대로 저장할까요?')) return; }
+  }
+  if(editingId){ const it=(DB.years[CUR]).find(x=>x.id===editingId); Object.assign(it,rec); calc(it); }
+  else { const it={id:uid(),...rec}; calc(it); DB.years[CUR].push(it); }
+  save(); closeModal(); refresh();
+  toast(editingId?'저장했습니다.':'기관을 추가했습니다.');
+};
+document.getElementById('modalDelete').onclick=()=>{ if(editingId){ const id=editingId; closeModal(); delInst(id); } };
+window.delInst=id=>{
+  const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return;
+  if(!confirm(`'${it.name||'이 기관'}'을(를) 삭제할까요?`))return;
+  DB.years[CUR]=DB.years[CUR].filter(x=>x.id!==id); save(); refresh(); toast('삭제했습니다.');
+};
+
+/* ---------- 탭 ---------- */
+document.getElementById('tabList').onclick=()=>switchView('list');
+document.getElementById('tabStats').onclick=()=>switchView('stats');
+
+/* ---------- 토스트 ---------- */
+let tt; function toast(m){ let t=document.getElementById('toast'); if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t);} t.textContent=m; t.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),3200); }
+document.getElementById('refreshBtn').onclick=refreshFromCloud;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&modal.classList.contains('show'))closeModal(); });
+
+boot();
+</script>
+</body>
+</html>
