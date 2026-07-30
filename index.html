@@ -112,11 +112,12 @@
   .welcome p{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:24px}
   .welcome .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 
-  /* 모달 */
-  .modal-bg{position:fixed;inset:0;background:rgba(20,35,59,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;backdrop-filter:blur(2px)}
-  .modal-bg.show{display:flex}
-  .modal{background:#fff;border-radius:16px;width:100%;max-width:860px;max-height:90vh;overflow:auto;box-shadow:0 24px 60px rgba(20,35,59,.35)}
-  .modal .mh{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:between;position:sticky;top:0;background:#fff}
+  /* 상세: 카드 아래로 펼쳐지는 인라인 패널 */
+  .modal-bg{display:none!important}
+  .modal{background:#fff;border:1px solid #cdd8e5;border-radius:14px;width:100%;max-width:none;overflow:hidden;box-shadow:0 6px 20px rgba(20,35,59,.13);margin:4px 0 10px}
+  .modal .mh{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;background:var(--wash)}
+  .detail-row td.detail-cell{padding:0!important;border:none!important;background:transparent!important}
+  .detail-row td.detail-cell::before{display:none!important}
   .modal .mh h3{font-size:17px;font-weight:700;flex:1}
   .modal .mx{border:none;background:none;cursor:pointer;font-size:22px;color:var(--slate);line-height:1}
   .modal .mb{padding:20px 24px}
@@ -285,6 +286,7 @@
     <!-- 뷰 1: 기관 목록 -->
     <div id="viewList">
       <div class="status-bar" id="statusBar"></div>
+      <div id="addHost"></div>
       <div class="tablewrap">
         <div class="tbar">
           <h3 id="tblTitle">기관별 현황</h3>
@@ -697,6 +699,7 @@ function buildFilters(){
 }
 
 function renderTable(){
+  if(typeof panel!=='undefined' && panel && panel.closest('.detail-row')){ stowPanel(); expandedId=null; }
   const list=DB.years[CUR]||[];
   const q=norm(document.getElementById('search').value).toLowerCase();
   const fr=document.getElementById('fRegion').value, fs=document.getElementById('fStatus').value;
@@ -708,7 +711,7 @@ function renderTable(){
   tb.innerHTML=rows.map((i,idx)=>{
     const sc=STATUS_COLORS[i.status]||'#8896A8', ec=EDU_COLORS[i.edu]||'#8896A8';
     const noteOneline=(i.note||'').replace(/\s+/g,' ').trim();
-    return `<tr class="clickrow" style="--sc:${sc}" onclick="openDetail('${i.id}')">
+    return `<tr class="clickrow" data-id="${i.id}" style="--sc:${sc}" onclick="openDetail('${i.id}')">
       <td class="num" data-label="연번">${idx+1}</td>
       <td data-label="권역">${i.region?esc(i.region):'<span class="muted-cell">—</span>'}</td>
       <td class="mobile-title" data-label="기관명"><span class="mt-name">${esc(i.name)||'—'}</span><button class="detail-btn" onclick="event.stopPropagation();openDetail('${i.id}')">상세 ›</button></td>
@@ -764,8 +767,19 @@ function renderInstDetail(name){
 
 /* ---------- 모달(추가 / 상세·수정) ---------- */
 const modal=document.getElementById('modal');
-function openModal(){ editing=true; modal.classList.add('show'); }
-function closeModal(){ editing=false; modal.classList.remove('show'); editingId=null; }
+const panel=modal.querySelector('.modal');
+let expandedId=null;
+function stowPanel(){ modal.appendChild(panel); panel.style.display='none'; }
+function closeModal(){ const dr=panel.closest('.detail-row'); stowPanel(); if(dr)dr.remove(); expandedId=null; editing=false; editingId=null; }
+function openInline(anchorTr){
+  closeModal(); panel.style.display='';
+  if(anchorTr){
+    const dr=document.createElement('tr'); dr.className='detail-row';
+    const td=document.createElement('td'); td.className='detail-cell'; td.colSpan=13;
+    td.appendChild(panel); dr.appendChild(td); anchorTr.after(dr);
+  } else { document.getElementById('addHost').appendChild(panel); }
+  editing=true;
+}
 function fillForm(i){
   f_region.value=i?.region||''; f_name.value=i?.name||''; f_dept.value=i?.dept||'';
   f_manager.value=i?.manager||''; f_phone.value=i?.phone||''; f_edu.value=i?.edu||'';
@@ -776,11 +790,10 @@ function showStats(on){
   document.getElementById('instStatsWrap').classList.toggle('hidden',!on);
   document.getElementById('modalDelete').classList.toggle('hidden',!on);
 }
-document.getElementById('addInstBtn').onclick=()=>{ editingId=null; document.getElementById('modalTitle').textContent='기관 추가'; fillForm(null); showStats(false); openModal(); f_name.focus(); };
-window.openDetail=id=>{ const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); openModal(); };
+document.getElementById('addInstBtn').onclick=()=>{ if(expandedId==='__add'){closeModal();return;} editingId=null; document.getElementById('modalTitle').textContent='기관 추가'; fillForm(null); showStats(false); openInline(null); expandedId='__add'; setTimeout(()=>f_name.focus(),50); };
+window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); expandedId=id; if(tr)setTimeout(()=>tr.scrollIntoView({behavior:'smooth',block:'nearest'}),60); };
 document.getElementById('modalX').onclick=closeModal;
 document.getElementById('modalCancel').onclick=closeModal;
-modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
 document.getElementById('modalSave').onclick=()=>{
   const name=norm(f_name.value); if(!name){ toast('기관명을 입력하세요.'); f_name.focus(); return; }
   const rec={ region:norm(f_region.value),name,dept:norm(f_dept.value),manager:norm(f_manager.value),phone:norm(f_phone.value),
