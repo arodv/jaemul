@@ -363,6 +363,12 @@
         <div class="field"><label>재물조사 진행상태</label>
           <select id="f_status"><option value="">선택</option><option>대기</option><option>일정협의중</option><option>진행중</option><option>완료</option><option>보류</option></select></div>
         <div class="field"><label>재물조사 기준일자</label><input id="f_baseDate" type="date"></div>
+        <div class="field"><label>본청 지원방식</label>
+          <select id="f_baseSupport" onchange="toggleEtc('base')"><option value="">선택</option><option>인식지원</option><option>자체적으로 관리</option><option>기타</option></select>
+          <input id="f_baseSupportEtc" class="hidden" placeholder="직접 입력" style="margin-top:6px"></div>
+        <div class="field"><label>외청 지원방식</label>
+          <select id="f_branchSupport" onchange="toggleEtc('branch')"><option value="">선택</option><option>리더기 배부</option><option>기타</option></select>
+          <input id="f_branchSupportEtc" class="hidden" placeholder="직접 입력" style="margin-top:6px"></div>
         <div class="field"><label>전체 물품수</label><input id="f_total" type="number" min="0" placeholder="태그 부착 자산수"></div>
         <div class="field"><label>리딩(인식) 수</label><input id="f_read" type="number" min="0" placeholder="실제 읽힌 수"></div>
         <div class="field"><label>재발행 수량</label><input id="f_reissue" type="number" min="0" placeholder="재발행 태그수"></div>
@@ -785,20 +791,30 @@ function fillForm(i){
   f_manager.value=i?.manager||''; f_phone.value=i?.phone||''; f_edu.value=i?.edu||'';
   f_status.value=i?.status||''; f_total.value=i?.total??''; f_read.value=i?.read??''; f_reissue.value=i?.reissue??'';
   f_equipment.value=i?.equipment||''; f_note.value=i?.note||''; f_baseDate.value=i?.baseDate||'';
+  f_baseSupport.value=i?.baseSupport||''; f_baseSupportEtc.value=i?.baseSupportEtc||'';
+  f_branchSupport.value=i?.branchSupport||''; f_branchSupportEtc.value=i?.branchSupportEtc||'';
+  toggleEtc('base'); toggleEtc('branch');
 }
+window.toggleEtc=w=>{
+  const sel=document.getElementById(w==='base'?'f_baseSupport':'f_branchSupport');
+  const etc=document.getElementById(w==='base'?'f_baseSupportEtc':'f_branchSupportEtc');
+  etc.classList.toggle('hidden', sel.value!=='기타');
+};
 function showStats(on){
   document.getElementById('instStatsWrap').classList.toggle('hidden',!on);
   document.getElementById('modalDelete').classList.toggle('hidden',!on);
 }
-document.getElementById('addInstBtn').onclick=()=>{ if(expandedId==='__add'){closeModal();return;} editingId=null; document.getElementById('modalTitle').textContent='기관 추가'; fillForm(null); showStats(false); openInline(null); expandedId='__add'; setTimeout(()=>f_name.focus(),50); };
-window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); expandedId=id; if(tr)setTimeout(()=>tr.scrollIntoView({behavior:'smooth',block:'nearest'}),60); };
+document.getElementById('addInstBtn').onclick=()=>{ if(expandedId==='__add'){closeModal();return;} document.getElementById('dash').classList.remove('hidden'); document.getElementById('welcome').classList.add('hidden'); editingId=null; document.getElementById('modalTitle').textContent='기관 추가'; fillForm(null); showStats(false); openInline(null); expandedId='__add'; setTimeout(()=>f_name.focus(),50); };
+window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); editingId=id; expandedId=id; if(tr)setTimeout(()=>tr.scrollIntoView({behavior:'smooth',block:'nearest'}),60); };
 document.getElementById('modalX').onclick=closeModal;
 document.getElementById('modalCancel').onclick=closeModal;
 document.getElementById('modalSave').onclick=()=>{
   const name=norm(f_name.value); if(!name){ toast('기관명을 입력하세요.'); f_name.focus(); return; }
   const rec={ region:norm(f_region.value),name,dept:norm(f_dept.value),manager:norm(f_manager.value),phone:norm(f_phone.value),
     edu:f_edu.value,status:f_status.value,total:numOrNull(f_total.value),read:numOrNull(f_read.value),reissue:numOrNull(f_reissue.value),
-    equipment:norm(f_equipment.value),note:(f_note.value||'').trim(),baseDate:f_baseDate.value };
+    equipment:norm(f_equipment.value),note:(f_note.value||'').trim(),baseDate:f_baseDate.value,
+    baseSupport:f_baseSupport.value,baseSupportEtc:norm(f_baseSupportEtc.value),
+    branchSupport:f_branchSupport.value,branchSupportEtc:norm(f_branchSupportEtc.value) };
   if(rec.total!=null){
     if(rec.read!=null && rec.read>rec.total){ if(!confirm('리딩(인식) 수가 전체 물품수보다 많습니다.\n그대로 저장할까요?')) return; }
     if(rec.reissue!=null && rec.reissue>rec.total){ if(!confirm('재발행 수가 전체 물품수보다 많습니다.\n그대로 저장할까요?')) return; }
