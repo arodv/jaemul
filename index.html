@@ -115,6 +115,7 @@
   /* 상세: 카드 아래로 펼쳐지는 인라인 패널 */
   .modal-bg{display:none!important}
   .modal{background:#fff;border:1px solid #cdd8e5;border-radius:14px;width:100%;max-width:none;overflow:hidden;box-shadow:0 6px 20px rgba(20,35,59,.13);margin:4px 0 10px}
+  @media(min-width:769px){.modal{max-height:82vh;overflow-y:auto}.modal .mh{position:sticky;top:0;background:#fff;z-index:6}}
   .modal .mh{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;background:var(--wash)}
   .detail-row td.detail-cell{padding:0!important;border:none!important;background:transparent!important}
   .detail-row td.detail-cell::before{display:none!important}
@@ -122,6 +123,7 @@
   .modal .mx{border:none;background:none;cursor:pointer;font-size:22px;color:var(--slate);line-height:1}
   .modal .mb{padding:20px 24px}
   .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(min-width:901px){.fgrid{grid-template-columns:1fr 1fr 1fr}}
   .field{display:flex;flex-direction:column;gap:6px}
   .field.full{grid-column:1/-1}
   .field label{font-size:12.5px;font-weight:600;color:var(--ink-2)}
@@ -134,7 +136,7 @@
   .equip-row input{flex:1}
   .equip-row input[type=number]{width:80px;flex:0 0 80px}
   .field .hint{font-size:11px;color:var(--slate)}
-  .mf{padding:16px 24px 22px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--line);position:sticky;bottom:0;background:#fff}
+  .mf{padding:16px 24px 22px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--line);background:#fff}
 
   .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:#fff;padding:12px 20px;border-radius:11px;font-size:13.5px;font-weight:600;box-shadow:0 10px 30px rgba(20,35,59,.3);z-index:99;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -390,22 +392,22 @@
         <div class="field full"><label>특이사항</label><textarea id="f_note" rows="2"></textarea></div>
         <div class="field full"><span class="hint">인식률·재발행률은 물품수를 기준으로 자동 계산됩니다.</span></div>
       </div>
-      <div id="instStatsWrap" class="inst-stats hidden">
-        <h4>상세 통계</h4>
-        <div class="cap">현재 연도 수치와 연도별 추이를 한눈에</div>
-        <div class="det-cards" id="detCards"></div>
-        <div class="charts-2">
-          <div class="chart-card"><div class="chart-t">인식률 · 재발행률 추이</div><div class="chartbox" id="instChart"></div></div>
-          <div class="chart-card"><div class="chart-t">물품수 · 리딩수 (연도별)</div><div class="chartbox" id="instBarChart"></div></div>
-        </div>
-        <div id="instStatTable"></div>
-      </div>
     </div>
     <div class="mf">
       <button class="obtn warn hidden" id="modalDelete">삭제</button>
       <div style="flex:1"></div>
       <button class="obtn" id="modalCancel">취소</button>
       <button class="btn" id="modalSave">저장</button>
+    </div>
+    <div id="instStatsWrap" class="inst-stats hidden">
+      <h4>상세 통계</h4>
+      <div class="cap">현재 연도 수치와 연도별 추이를 한눈에</div>
+      <div class="det-cards" id="detCards"></div>
+      <div class="charts-2">
+        <div class="chart-card"><div class="chart-t">인식률 · 재발행률 추이</div><div class="chartbox" id="instChart"></div></div>
+        <div class="chart-card"><div class="chart-t">물품수 · 리딩수 (연도별)</div><div class="chartbox" id="instBarChart"></div></div>
+      </div>
+      <div id="instStatTable"></div>
     </div>
   </div>
 </div>
@@ -818,7 +820,7 @@ function showStats(on){
   document.getElementById('modalDelete').classList.toggle('hidden',!on);
 }
 document.getElementById('addInstBtn').onclick=()=>{ if(expandedId==='__add'){closeModal();return;} editingId=null; document.getElementById('modalTitle').textContent='기관 추가'; fillForm(null); showStats(false); openInline(null); expandedId='__add'; setTimeout(()=>f_name.focus(),50); };
-window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); editingId=id; expandedId=id; if(tr)setTimeout(()=>tr.scrollIntoView({behavior:'smooth',block:'nearest'}),60); };
+window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); editingId=id; expandedId=id; setTimeout(()=>{ const dr=document.querySelector('.detail-row')||tr; if(dr){ const y=dr.getBoundingClientRect().top+window.scrollY-64; window.scrollTo({top:y<0?0:y,behavior:'smooth'}); } },90); };
 document.getElementById('modalX').onclick=closeModal;
 document.getElementById('modalCancel').onclick=closeModal;
 document.getElementById('modalSave').onclick=()=>{
