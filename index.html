@@ -158,9 +158,9 @@
   /* 특이사항 셀 */
   td.note-cell{max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-2)}
   @media(min-width:769px){td.note-cell{max-width:300px;white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.45}}
-  .note-row-pc td{background:#F8FAFC;color:var(--ink-2);font-size:12.5px;padding:5px 16px 11px;border-top:none;line-height:1.55}
-  .note-row-pc td b{color:var(--muted);font-weight:600;margin-right:7px;font-size:11px}
-  .note-row-pc .nr-text{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .note-row-pc td{background:transparent;padding:0 16px 12px 0;border-top:none}
+  .note-row-pc .nr-wrap{margin-left:44px;padding:8px 13px;background:#F1F5F9;border-left:3px solid var(--sc,#cbd5e1);border-radius:0 8px 8px 0;font-size:12.5px;color:var(--ink-2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .note-row-pc .nr-lbl{font-weight:700;color:var(--muted);font-size:11px;margin-right:7px}
   @media(max-width:768px){.note-row-pc{display:none!important}}
   .mt-name{font-weight:600}
   .detail-btn{display:none}
@@ -745,7 +745,7 @@ function renderTable(){
       <td class="num m-hide" data-label="재발행">${fmtInt(i.reissue)}</td>
       <td class="num rate m-hide ${recogClass(i.recog)}" data-label="인식률">${fmtPct(i.recog)}</td>
       <td class="num rate m-hide ${reClass(i.reRate)}" data-label="재발행률">${fmtPct(i.reRate)}</td>
-    </tr>${noteOneline?`<tr class="note-row-pc"><td colspan="12"><b>특이사항</b><span class="nr-text">${esc(noteOneline)}</span></td></tr>`:''}`;
+    </tr>${noteOneline?`<tr class="note-row-pc" style="--sc:${sc}"><td colspan="12"><div class="nr-wrap"><span class="nr-lbl">특이사항</span>${esc(noteOneline)}</div></td></tr>`:''}`;
   }).join('');
 }
 
@@ -825,6 +825,7 @@ document.getElementById('modalX').onclick=closeModal;
 document.getElementById('modalCancel').onclick=closeModal;
 document.getElementById('modalSave').onclick=()=>{
   const name=norm(f_name.value); if(!name){ toast('기관명을 입력하세요.'); f_name.focus(); return; }
+  const isEdit=!!editingId;
   const rec={ region:norm(f_region.value),name,dept:norm(f_dept.value),manager:norm(f_manager.value),phone:norm(f_phone.value),
     edu:f_edu.value,status:f_status.value,total:numOrNull(f_total.value),read:numOrNull(f_read.value),reissue:numOrNull(f_reissue.value),
     readerName:norm(f_readerName.value),readerQty:numOrNull(f_readerQty.value),issuerName:norm(f_issuerName.value),issuerQty:numOrNull(f_issuerQty.value),note:(f_note.value||'').trim(),baseDate:f_baseDate.value,
@@ -837,7 +838,7 @@ document.getElementById('modalSave').onclick=()=>{
   if(editingId){ const it=(DB.years[CUR]).find(x=>x.id===editingId); Object.assign(it,rec); calc(it); }
   else { const it={id:uid(),...rec}; calc(it); DB.years[CUR].push(it); }
   save(); closeModal(); refresh();
-  toast(editingId?'저장했습니다.':'기관을 추가했습니다.');
+  toast(isEdit?'저장 완료':'기관을 추가했습니다.');
 };
 document.getElementById('modalDelete').onclick=()=>{ if(editingId){ const id=editingId; closeModal(); delInst(id); } };
 window.delInst=id=>{
