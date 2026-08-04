@@ -166,6 +166,14 @@
   .pd-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
   .pd-tag{display:inline-flex;align-items:center;gap:6px;background:var(--scan);color:#fff;border-radius:16px;padding:5px 8px 5px 12px;font-size:12.5px;font-weight:700}
   .pd-tag button{background:rgba(255,255,255,.25);border:none;color:#fff;cursor:pointer;font-size:13px;line-height:1;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0}
+  .nl-row{display:flex;gap:8px}
+  .nl-row #f_noteDate{flex:0 0 150px}
+  .nl-row #f_noteText{flex:1}
+  .note-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .note-item{display:flex;align-items:center;gap:10px;background:var(--wash);border-radius:8px;padding:8px 12px;font-size:13px}
+  .note-item .ni-date{font-weight:800;color:var(--scan-d);flex:0 0 auto;font-variant-numeric:tabular-nums}
+  .note-item .ni-text{flex:1;color:var(--ink);line-height:1.4}
+  .note-item button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
   @media(max-width:768px){.note-row-pc{display:none!important}}
   .mt-name{font-weight:600}
   .detail-btn{display:none}
@@ -378,8 +386,8 @@
         <div class="field"><label>재물조사 진행상태</label>
           <select id="f_status"><option value="">선택</option><option>대기</option><option>일정협의중</option><option>진행중</option><option>완료</option><option>보류</option></select></div>
         <div class="field"><label>재물조사 기준일자 (2026년)</label><input id="f_baseDate" type="date" min="2026-01-01" max="2026-12-31"></div>
-        <div class="field full"><label>재물조사 진행일자 <span style="font-weight:400;color:var(--muted)">(달력에서 고르고 추가 — 여러 날 가능)</span></label>
-          <div class="pd-row"><input id="f_progressPick" type="date" min="2026-01-01" max="2026-12-31"><button type="button" class="obtn" id="addPD">추가</button></div>
+        <div class="field full"><label>재물조사 진행일자 <span style="font-weight:400;color:var(--muted)">(달력에서 날짜를 고르면 자동 추가 · 연속된 날은 8/14~15로 묶임)</span></label>
+          <input id="f_progressPick" type="date" min="2026-01-01" max="2026-12-31">
           <div id="pdTags" class="pd-tags"></div></div>
         <div class="field"><label>본청 지원방식</label>
           <select id="f_baseSupport" onchange="toggleEtc('base')"><option value="">선택</option><option>리더기 배부</option><option>인식지원</option><option>자체적으로 관리</option><option>기타</option></select>
@@ -395,7 +403,9 @@
             <div class="equip-row"><span class="equip-lbl">리더기</span><input id="f_readerName" placeholder="품목명"><input id="f_readerQty" type="number" min="0" placeholder="수량"></div>
             <div class="equip-row"><span class="equip-lbl">발행기</span><input id="f_issuerName" placeholder="품목명"><input id="f_issuerQty" type="number" min="0" placeholder="수량"></div>
           </div></div>
-        <div class="field full"><label>특이사항</label><textarea id="f_note" rows="2"></textarea></div>
+        <div class="field full"><label>특이사항 <span style="font-weight:400;color:var(--muted)">(날짜 옆에 내용 입력 → 추가 · 여러 건 가능)</span></label>
+          <div class="nl-row"><input id="f_noteDate" type="date" min="2026-01-01" max="2026-12-31"><input id="f_noteText" placeholder="특이사항 내용"><button type="button" class="obtn" id="addNote">추가</button></div>
+          <div id="noteList" class="note-list"></div></div>
         <div class="field full"><span class="hint">인식률·재발행률은 물품수를 기준으로 자동 계산됩니다.</span></div>
       </div>
     </div>
@@ -439,9 +449,20 @@ const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;'
 const fmtDate=d=>{ if(!d)return''; const p=String(d).split('-'); return p.length===3?`${p[0].slice(2)}.${p[1]}.${p[2]}`:String(d); };
 const fmtMD=d=>{ if(!d)return''; const p=String(d).split('-'); return p.length===3?`${+p[1]}/${+p[2]}`:String(d); };
 const fmtPDList=arr=>Array.isArray(arr)?arr.map(fmtMD).join(', '):(arr?String(arr):'');
+const fmtPDGroup=arr=>{
+  if(!Array.isArray(arr)||!arr.length)return '';
+  const s=[...arr].sort(); const groups=[]; let st=s[0], pv=s[0];
+  for(let k=1;k<s.length;k++){ const c=s[k]; if((new Date(c)-new Date(pv))===86400000){pv=c;} else {groups.push([st,pv]); st=c; pv=c;} }
+  groups.push([st,pv]);
+  return groups.map(([a,z])=>{ const ap=a.split('-'),zp=z.split('-'); if(a===z)return `${+ap[1]}/${+ap[2]}`; if(ap[1]===zp[1])return `${+ap[1]}/${+ap[2]}~${+zp[2]}`; return `${+ap[1]}/${+ap[2]}~${+zp[1]}/${+zp[2]}`; }).join(', ');
+};
 let curPD=[];
 function renderPDTags(){ const el=document.getElementById('pdTags'); if(!el)return; el.innerHTML=curPD.map(d=>`<span class="pd-tag">${fmtMD(d)}<button type="button" onclick="removePD('${d}')">×</button></span>`).join(''); }
 window.removePD=d=>{ curPD=curPD.filter(x=>x!==d); renderPDTags(); };
+const fmtNotes=arr=>Array.isArray(arr)?arr.map(n=>(n.d?fmtMD(n.d)+' ':'')+n.t).join(' / '):'';
+let curNotes=[];
+function renderNoteList(){ const el=document.getElementById('noteList'); if(!el)return; el.innerHTML=curNotes.map((n,idx)=>`<div class="note-item">${n.d?`<span class="ni-date">${fmtMD(n.d)}</span>`:''}<span class="ni-text">${esc(n.t)}</span><button type="button" onclick="removeNote(${idx})">×</button></div>`).join(''); }
+window.removeNote=idx=>{ curNotes.splice(idx,1); renderNoteList(); };
 const isNum=v=>v!==''&&v!=null&&!isNaN(Number(v));
 const numOrNull=v=>isNum(v)?Math.max(0,Math.round(Number(v))):null;
 const fmtInt=n=>n==null?'—':Number(n).toLocaleString('ko-KR');
@@ -750,7 +771,7 @@ function renderTable(){
       <td data-label="담당자">${(i.phone||i.manager)?`${i.phone?esc(i.phone):''}${i.phone&&i.manager?' · ':''}${i.manager?esc(i.manager):''}`:'<span class="muted-cell">—</span>'}</td>
       <td class="m-hide" data-label="교육">${pill(i.edu,ec)}</td><td data-label="조사상태">${pill(i.status,sc)}</td>
       <td class="m-hide" data-label="기준일자">${i.baseDate?fmtDate(i.baseDate):'<span class="muted-cell">—</span>'}</td>
-      <td data-label="진행일자">${fmtPDList(i.progressDates)||'<span class="muted-cell">—</span>'}</td>
+      <td data-label="진행일자">${fmtPDGroup(i.progressDates)||'<span class="muted-cell">—</span>'}</td>
       <td class="note-cell m-hide" data-label="특이사항" title="${esc(noteOneline)}">${noteOneline?esc(noteOneline):'<span class="muted-cell">—</span>'}</td>
     </tr>`;
   }).join('');
@@ -812,7 +833,7 @@ function fillForm(i){
   f_region.value=i?.region||''; f_name.value=i?.name||''; f_dept.value=i?.dept||'';
   f_manager.value=i?.manager||''; f_phone.value=i?.phone||''; f_edu.value=i?.edu||'';
   f_status.value=i?.status||''; f_total.value=i?.total??''; f_read.value=i?.read??''; f_reissue.value=i?.reissue??'';
-  f_readerName.value=i?.readerName||''; f_readerQty.value=i?.readerQty??''; f_issuerName.value=i?.issuerName||''; f_issuerQty.value=i?.issuerQty??''; f_note.value=i?.note||''; f_baseDate.value=i?.baseDate||''; curPD=Array.isArray(i?.progressDates)?[...i.progressDates]:[]; renderPDTags();
+  f_readerName.value=i?.readerName||''; f_readerQty.value=i?.readerQty??''; f_issuerName.value=i?.issuerName||''; f_issuerQty.value=i?.issuerQty??''; f_baseDate.value=i?.baseDate||''; curPD=Array.isArray(i?.progressDates)?[...i.progressDates]:[]; renderPDTags(); curNotes=Array.isArray(i?.noteList)?i.noteList.map(n=>({...n})):(i?.note?[{d:'',t:i.note}]:[]); renderNoteList();
   f_baseSupport.value=i?.baseSupport||''; f_baseSupportEtc.value=i?.baseSupportEtc||'';
   f_branchSupport.value=i?.branchSupport||''; f_branchSupportEtc.value=i?.branchSupportEtc||'';
   toggleEtc('base'); toggleEtc('branch');
@@ -829,13 +850,14 @@ document.getElementById('addInstBtn').onclick=()=>{ if(expandedId==='__add'){clo
 window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); editingId=id; expandedId=id; setTimeout(()=>{ const dr=document.querySelector('.detail-row')||tr; if(dr){ const y=dr.getBoundingClientRect().top+window.scrollY-64; window.scrollTo({top:y<0?0:y,behavior:'smooth'}); } },90); };
 document.getElementById('modalX').onclick=closeModal;
 document.getElementById('modalCancel').onclick=closeModal;
-document.getElementById('addPD').onclick=()=>{ const inp=document.getElementById('f_progressPick'); const v=inp.value; if(v&&!curPD.includes(v)){ curPD.push(v); curPD.sort(); renderPDTags(); inp.value=''; } };
+document.getElementById('f_progressPick').onchange=function(){ const v=this.value; if(v&&!curPD.includes(v)){ curPD.push(v); curPD.sort(); renderPDTags(); } const inp=this; setTimeout(()=>{inp.value='';},100); };
+document.getElementById('addNote').onclick=()=>{ const d=document.getElementById('f_noteDate').value; const t=document.getElementById('f_noteText').value.trim(); if(!t){ document.getElementById('f_noteText').focus(); return; } curNotes.push({d,t}); curNotes.sort((a,b)=>(a.d||'zzz').localeCompare(b.d||'zzz')); renderNoteList(); document.getElementById('f_noteDate').value=''; document.getElementById('f_noteText').value=''; document.getElementById('f_noteText').focus(); };
 document.getElementById('modalSave').onclick=()=>{
   const name=norm(f_name.value); if(!name){ toast('기관명을 입력하세요.'); f_name.focus(); return; }
   const isEdit=!!editingId;
   const rec={ region:norm(f_region.value),name,dept:norm(f_dept.value),manager:norm(f_manager.value),phone:norm(f_phone.value),
     edu:f_edu.value,status:f_status.value,total:numOrNull(f_total.value),read:numOrNull(f_read.value),reissue:numOrNull(f_reissue.value),
-    readerName:norm(f_readerName.value),readerQty:numOrNull(f_readerQty.value),issuerName:norm(f_issuerName.value),issuerQty:numOrNull(f_issuerQty.value),note:(f_note.value||'').trim(),baseDate:f_baseDate.value,progressDates:[...curPD],
+    readerName:norm(f_readerName.value),readerQty:numOrNull(f_readerQty.value),issuerName:norm(f_issuerName.value),issuerQty:numOrNull(f_issuerQty.value),note:fmtNotes(curNotes),noteList:curNotes.map(n=>({...n})),baseDate:f_baseDate.value,progressDates:[...curPD],
     baseSupport:f_baseSupport.value,baseSupportEtc:norm(f_baseSupportEtc.value),
     branchSupport:f_branchSupport.value,branchSupportEtc:norm(f_branchSupportEtc.value) };
   if(rec.total!=null){
