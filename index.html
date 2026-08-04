@@ -115,7 +115,7 @@
   /* 상세: 카드 아래로 펼쳐지는 인라인 패널 */
   .modal-bg{display:none!important}
   .modal{background:#fff;border:1px solid #cdd8e5;border-radius:14px;width:100%;max-width:none;overflow:hidden;box-shadow:0 6px 20px rgba(20,35,59,.13);margin:4px 0 10px}
-  @media(min-width:769px){.modal{max-height:82vh;overflow-y:auto}.modal .mh{position:sticky;top:0;background:#fff;z-index:6}}
+  @media(min-width:769px){.modal .mh{background:var(--wash)}}
   .modal .mh{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;background:var(--wash)}
   .detail-row td.detail-cell{padding:0!important;border:none!important;background:transparent!important}
   .detail-row td.detail-cell::before{display:none!important}
@@ -395,7 +395,6 @@
       </div>
     </div>
     <div class="mf">
-      <button class="obtn warn hidden" id="modalDelete">삭제</button>
       <div style="flex:1"></div>
       <button class="obtn" id="modalCancel">취소</button>
       <button class="btn" id="modalSave">저장</button>
@@ -819,7 +818,6 @@ window.toggleEtc=w=>{
 };
 function showStats(on){
   document.getElementById('instStatsWrap').classList.toggle('hidden',!on);
-  document.getElementById('modalDelete').classList.toggle('hidden',!on);
 }
 document.getElementById('addInstBtn').onclick=()=>{ if(expandedId==='__add'){closeModal();return;} editingId=null; document.getElementById('modalTitle').textContent='기관 추가'; fillForm(null); showStats(false); openInline(null); expandedId='__add'; setTimeout(()=>f_name.focus(),50); };
 window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); editingId=id; expandedId=id; setTimeout(()=>{ const dr=document.querySelector('.detail-row')||tr; if(dr){ const y=dr.getBoundingClientRect().top+window.scrollY-64; window.scrollTo({top:y<0?0:y,behavior:'smooth'}); } },90); };
@@ -842,7 +840,6 @@ document.getElementById('modalSave').onclick=()=>{
   save(); closeModal(); refresh();
   toast(isEdit?'저장 완료':'기관을 추가했습니다.');
 };
-document.getElementById('modalDelete').onclick=()=>{ if(editingId){ const id=editingId; closeModal(); delInst(id); } };
 window.delInst=id=>{
   const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return;
   if(!confirm(`'${it.name||'이 기관'}'을(를) 삭제할까요?`))return;
