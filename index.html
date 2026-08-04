@@ -165,6 +165,7 @@
   .note-row-pc .nr-lbl{font-weight:700;color:var(--muted);font-size:11px;margin-right:7px}
   .pd-row{display:flex;gap:8px}
   .pd-row input{flex:1}
+  .pd-tilde{align-self:center;color:var(--muted);font-weight:700;flex:0 0 auto}
   .pd-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
   .pd-tag{display:inline-flex;align-items:center;gap:6px;background:var(--scan);color:#fff;border-radius:16px;padding:5px 8px 5px 12px;font-size:12.5px;font-weight:700}
   .pd-tag button{background:rgba(255,255,255,.25);border:none;color:#fff;cursor:pointer;font-size:13px;line-height:1;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0}
@@ -206,7 +207,7 @@
   .stats-head .stats-lbl{font-size:13px;font-weight:700;color:var(--ink-2)}
   .stats-head .inp{min-width:220px}
   /* 기관 상세 안 통계 */
-  .inst-stats{margin-top:22px;border-top:1px solid var(--line);padding-top:18px}
+  .inst-stats{margin-top:22px;border-top:1px solid var(--line);padding:18px 24px 24px}
   .inst-stats h4{font-size:15px;font-weight:700;margin-bottom:3px}
   .inst-stats .cap{font-size:12px;color:var(--muted);margin-bottom:12px}
   .det-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:16px}
@@ -392,8 +393,8 @@
         <div class="field"><label>재물조사 진행상태</label>
           <select id="f_status"><option value="">선택</option><option>대기</option><option>일정협의중</option><option>진행중</option><option>완료</option><option>보류</option></select></div>
         <div class="field"><label>재물조사 기준일자 (2026년)</label><input id="f_baseDate" type="date" min="2026-01-01" max="2026-12-31"></div>
-        <div class="field full"><label>재물조사 지원일자 <span style="font-weight:400;color:var(--muted)">(달력에서 날짜를 고르면 자동 추가 · 연속된 날은 8/14~15로 묶임)</span></label>
-          <input id="f_progressPick" type="date" min="2026-01-01" max="2026-12-31">
+        <div class="field full"><label>재물조사 지원일자 <span style="font-weight:400;color:var(--muted)">(시작일 ~ 종료일 고르고 추가 · 하루면 시작일만)</span></label>
+          <div class="pd-row"><input id="f_pdStart" type="date" min="2026-01-01" max="2026-12-31"><span class="pd-tilde">~</span><input id="f_pdEnd" type="date" min="2026-01-01" max="2026-12-31"><button type="button" class="obtn" id="addPDRange">추가</button></div>
           <div id="pdTags" class="pd-tags"></div></div>
         <div class="field"><label>본청 지원방식</label>
           <select id="f_baseSupport" onchange="toggleEtc('base')"><option value="">선택</option><option>리더기 배부</option><option>인식지원</option><option>자체적으로 관리</option><option>기타</option></select>
@@ -469,8 +470,9 @@ const fmtPDGroup=arr=>{
   return groups.map(([a,z])=>{ const ap=a.split('-'),zp=z.split('-'); if(a===z)return `${+ap[1]}/${+ap[2]}`; if(ap[1]===zp[1])return `${+ap[1]}/${+ap[2]}~${+zp[2]}`; return `${+ap[1]}/${+ap[2]}~${+zp[1]}/${+zp[2]}`; }).join(', ');
 };
 let curPD=[];
-function renderPDTags(){ const el=document.getElementById('pdTags'); if(!el)return; el.innerHTML=curPD.map(d=>`<span class="pd-tag">${fmtMD(d)}<button type="button" onclick="removePD('${d}')">×</button></span>`).join(''); }
-window.removePD=d=>{ curPD=curPD.filter(x=>x!==d); renderPDTags(); };
+function addDays(ds,n){ const [y,m,d]=ds.split('-').map(Number); const dt=new Date(y,m-1,d+n); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; }
+function renderPDTags(){ const el=document.getElementById('pdTags'); if(!el)return; const s=[...curPD].sort(); const groups=[]; if(s.length){ let st=s[0],pv=s[0]; for(let k=1;k<s.length;k++){ if(addDays(pv,1)===s[k]){pv=s[k];}else{groups.push([st,pv]);st=s[k];pv=s[k];} } groups.push([st,pv]); } el.innerHTML=groups.map(([a,z])=>{ const lbl=a===z?fmtMD(a):(a.split('-')[1]===z.split('-')[1]?`${fmtMD(a)}~${+z.split('-')[2]}`:`${fmtMD(a)}~${fmtMD(z)}`); return `<span class="pd-tag">${lbl}<button type="button" onclick="removePDRange('${a}','${z}')">×</button></span>`; }).join(''); }
+window.removePDRange=(a,z)=>{ curPD=curPD.filter(d=>d<a||d>z); renderPDTags(); };
 const fmtNotes=arr=>Array.isArray(arr)?arr.map(n=>(n.d?fmtMD(n.d)+' ':'')+n.t).join(' / '):'';
 let curNotes=[];
 function renderNoteList(){ const el=document.getElementById('noteList'); if(!el)return; el.innerHTML=curNotes.map((n,idx)=>`<div class="note-item">${n.d?`<span class="ni-date">${fmtMD(n.d)}</span>`:''}<span class="ni-text">${esc(n.t)}</span><button type="button" onclick="removeNote(${idx})">×</button></div>`).join(''); }
@@ -870,7 +872,7 @@ document.getElementById('addInstBtn').onclick=()=>{ if(expandedId==='__add'){clo
 window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); editingId=id; expandedId=id; setTimeout(()=>{ const dr=document.querySelector('.detail-row')||tr; if(dr){ const y=dr.getBoundingClientRect().top+window.scrollY-64; window.scrollTo({top:y<0?0:y,behavior:'smooth'}); } },90); };
 document.getElementById('modalX').onclick=closeModal;
 document.getElementById('modalCancel').onclick=closeModal;
-document.getElementById('f_progressPick').onchange=function(){ const v=this.value; if(v&&!curPD.includes(v)){ curPD.push(v); curPD.sort(); renderPDTags(); } const inp=this; setTimeout(()=>{inp.value='';},100); };
+document.getElementById('addPDRange').onclick=()=>{ const s=document.getElementById('f_pdStart').value; if(!s){document.getElementById('f_pdStart').focus();return;} const e=document.getElementById('f_pdEnd').value||s; if(e<s){toast('종료일이 시작일보다 빠릅니다');return;} let cur=s,guard=0; while(cur<=e&&guard<400){ if(!curPD.includes(cur))curPD.push(cur); cur=addDays(cur,1); guard++; } curPD.sort(); renderPDTags(); document.getElementById('f_pdStart').value=''; document.getElementById('f_pdEnd').value=''; };
 document.getElementById('addNote').onclick=()=>{ const d=document.getElementById('f_noteDate').value; const t=document.getElementById('f_noteText').value.trim(); if(!t){ document.getElementById('f_noteText').focus(); return; } curNotes.push({d,t}); curNotes.sort((a,b)=>(a.d||'zzz').localeCompare(b.d||'zzz')); renderNoteList(); document.getElementById('f_noteDate').value=''; document.getElementById('f_noteText').value=''; document.getElementById('f_noteText').focus(); };
 document.getElementById('addReader').onclick=()=>{ const n=document.getElementById('f_readerSel').value; const q=+document.getElementById('f_readerQtyIn').value||0; if(!n)return; const ex=curReaders.find(r=>r.name===n); if(ex)ex.qty=q; else curReaders.push({name:n,qty:q}); renderEquip(); document.getElementById('f_readerSel').value=''; document.getElementById('f_readerQtyIn').value=''; };
 document.getElementById('addIssuer').onclick=()=>{ const n=document.getElementById('f_issuerSel').value; const q=+document.getElementById('f_issuerQtyIn').value||0; if(!n)return; const ex=curIssuers.find(r=>r.name===n); if(ex)ex.qty=q; else curIssuers.push({name:n,qty:q}); renderEquip(); document.getElementById('f_issuerSel').value=''; document.getElementById('f_issuerQtyIn').value=''; };
