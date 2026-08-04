@@ -148,6 +148,8 @@
   .tab.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
   tbody tr.clickrow{cursor:pointer}
   tbody tr.clickrow:hover{background:#EFF6FF}
+  tbody tr.clickrow.rg-in{background:#F0F7FB}
+  tbody tr.clickrow.rg-in:hover{background:#E4F0F8}
   /* 상태 요약 칩 */
   .status-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
   .status-chip{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;transition:.12s}
@@ -174,6 +176,10 @@
   .note-item .ni-date{font-weight:800;color:var(--scan-d);flex:0 0 auto;font-variant-numeric:tabular-nums}
   .note-item .ni-text{flex:1;color:var(--ink);line-height:1.4}
   .note-item button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+  .equip-tags{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 4px 62px}
+  .equip-tag{display:inline-flex;align-items:center;gap:7px;background:#EEF4FB;border:1px solid #d9e4f0;color:var(--ink);border-radius:16px;padding:4px 8px 4px 12px;font-size:12.5px;font-weight:600}
+  .equip-tag b{font-weight:800;color:var(--scan-d)}
+  .equip-tag button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:0}
   @media(max-width:768px){.note-row-pc{display:none!important}}
   .mt-name{font-weight:600}
   .detail-btn{display:none}
@@ -325,7 +331,7 @@
           <table>
             <thead><tr>
               <th>연번</th><th>권역</th><th>기관명</th><th>담당자</th>
-              <th>교육</th><th>조사상태</th><th>기준일자</th><th>진행일자</th><th>특이사항</th>
+              <th>교육</th><th>조사상태</th><th>기준일자</th><th>지원일자</th><th>특이사항</th>
             </tr></thead>
             <tbody id="tbody"></tbody>
           </table>
@@ -386,7 +392,7 @@
         <div class="field"><label>재물조사 진행상태</label>
           <select id="f_status"><option value="">선택</option><option>대기</option><option>일정협의중</option><option>진행중</option><option>완료</option><option>보류</option></select></div>
         <div class="field"><label>재물조사 기준일자 (2026년)</label><input id="f_baseDate" type="date" min="2026-01-01" max="2026-12-31"></div>
-        <div class="field full"><label>재물조사 진행일자 <span style="font-weight:400;color:var(--muted)">(달력에서 날짜를 고르면 자동 추가 · 연속된 날은 8/14~15로 묶임)</span></label>
+        <div class="field full"><label>재물조사 지원일자 <span style="font-weight:400;color:var(--muted)">(달력에서 날짜를 고르면 자동 추가 · 연속된 날은 8/14~15로 묶임)</span></label>
           <input id="f_progressPick" type="date" min="2026-01-01" max="2026-12-31">
           <div id="pdTags" class="pd-tags"></div></div>
         <div class="field"><label>본청 지원방식</label>
@@ -398,10 +404,16 @@
         <div class="field"><label>전체 물품수</label><input id="f_total" type="number" min="0" placeholder="태그 부착 자산수"></div>
         <div class="field"><label>리딩(인식) 수</label><input id="f_read" type="number" min="0" placeholder="실제 읽힌 수"></div>
         <div class="field"><label>재발행 수량</label><input id="f_reissue" type="number" min="0" placeholder="재발행 태그수"></div>
-        <div class="field full"><label>장비현황</label>
+        <div class="field full"><label>장비현황 <span style="font-weight:400;color:var(--muted)">(종류 고르고 수량 입력 → 추가 · 여러 종류 가능)</span></label>
           <div class="equip-box">
-            <div class="equip-row"><span class="equip-lbl">리더기</span><input id="f_readerName" placeholder="품목명"><input id="f_readerQty" type="number" min="0" placeholder="수량"></div>
-            <div class="equip-row"><span class="equip-lbl">발행기</span><input id="f_issuerName" placeholder="품목명"><input id="f_issuerQty" type="number" min="0" placeholder="수량"></div>
+            <div class="equip-row"><span class="equip-lbl">리더기</span>
+              <select id="f_readerSel"><option value="">종류 선택</option><option>ATS100</option><option>AT907</option></select>
+              <input id="f_readerQtyIn" type="number" min="1" placeholder="수량"><button type="button" class="obtn" id="addReader">추가</button></div>
+            <div id="readerTags" class="equip-tags"></div>
+            <div class="equip-row"><span class="equip-lbl">발행기</span>
+              <select id="f_issuerSel"><option value="">종류 선택</option><option>4TM</option><option>4T1</option><option>ANYONE</option><option>BT-100</option></select>
+              <input id="f_issuerQtyIn" type="number" min="1" placeholder="수량"><button type="button" class="obtn" id="addIssuer">추가</button></div>
+            <div id="issuerTags" class="equip-tags"></div>
           </div></div>
         <div class="field full"><label>특이사항 <span style="font-weight:400;color:var(--muted)">(날짜 옆에 내용 입력 → 추가 · 여러 건 가능)</span></label>
           <div class="nl-row"><input id="f_noteDate" type="date" min="2026-01-01" max="2026-12-31"><input id="f_noteText" placeholder="특이사항 내용"><button type="button" class="obtn" id="addNote">추가</button></div>
@@ -463,6 +475,14 @@ const fmtNotes=arr=>Array.isArray(arr)?arr.map(n=>(n.d?fmtMD(n.d)+' ':'')+n.t).j
 let curNotes=[];
 function renderNoteList(){ const el=document.getElementById('noteList'); if(!el)return; el.innerHTML=curNotes.map((n,idx)=>`<div class="note-item">${n.d?`<span class="ni-date">${fmtMD(n.d)}</span>`:''}<span class="ni-text">${esc(n.t)}</span><button type="button" onclick="removeNote(${idx})">×</button></div>`).join(''); }
 window.removeNote=idx=>{ curNotes.splice(idx,1); renderNoteList(); };
+let curReaders=[], curIssuers=[];
+function renderEquip(){
+  const rt=document.getElementById('readerTags'), it=document.getElementById('issuerTags');
+  if(rt)rt.innerHTML=curReaders.map((r,i)=>`<span class="equip-tag">${esc(r.name)} <b>${r.qty}</b>대<button type="button" onclick="removeReader(${i})">×</button></span>`).join('');
+  if(it)it.innerHTML=curIssuers.map((r,i)=>`<span class="equip-tag">${esc(r.name)} <b>${r.qty}</b>대<button type="button" onclick="removeIssuer(${i})">×</button></span>`).join('');
+}
+window.removeReader=i=>{ curReaders.splice(i,1); renderEquip(); };
+window.removeIssuer=i=>{ curIssuers.splice(i,1); renderEquip(); };
 const isNum=v=>v!==''&&v!=null&&!isNaN(Number(v));
 const numOrNull=v=>isNum(v)?Math.max(0,Math.round(Number(v))):null;
 const fmtInt=n=>n==null?'—':Number(n).toLocaleString('ko-KR');
@@ -764,14 +784,14 @@ function renderTable(){
   tb.innerHTML=rows.map((i,idx)=>{
     const sc=STATUS_COLORS[i.status]||'#8896A8', ec=EDU_COLORS[i.edu]||'#8896A8';
     const noteOneline=(i.note||'').replace(/\s+/g,' ').trim();
-    return `<tr class="clickrow" data-id="${i.id}" style="--sc:${sc}" onclick="openDetail('${i.id}')">
+    return `<tr class="clickrow${i.region==='인천'?' rg-in':''}" data-id="${i.id}" style="--sc:${sc}" onclick="openDetail('${i.id}')">
       <td class="num" data-label="연번">${idx+1}</td>
       <td data-label="권역">${i.region?esc(i.region):'<span class="muted-cell">—</span>'}</td>
       <td class="mobile-title" data-label="기관명"><span class="mt-name">${esc(i.name)||'—'}</span><button class="detail-btn" onclick="event.stopPropagation();openDetail('${i.id}')">상세 ›</button></td>
       <td data-label="담당자">${(i.phone||i.manager)?`${i.phone?esc(i.phone):''}${i.phone&&i.manager?' · ':''}${i.manager?esc(i.manager):''}`:'<span class="muted-cell">—</span>'}</td>
       <td class="m-hide" data-label="교육">${pill(i.edu,ec)}</td><td data-label="조사상태">${pill(i.status,sc)}</td>
       <td class="m-hide" data-label="기준일자">${i.baseDate?fmtDate(i.baseDate):'<span class="muted-cell">—</span>'}</td>
-      <td data-label="진행일자">${fmtPDGroup(i.progressDates)||'<span class="muted-cell">—</span>'}</td>
+      <td data-label="지원일자">${fmtPDGroup(i.progressDates)||'<span class="muted-cell">—</span>'}</td>
       <td class="note-cell m-hide" data-label="특이사항" title="${esc(noteOneline)}">${noteOneline?esc(noteOneline):'<span class="muted-cell">—</span>'}</td>
     </tr>`;
   }).join('');
@@ -833,7 +853,7 @@ function fillForm(i){
   f_region.value=i?.region||''; f_name.value=i?.name||''; f_dept.value=i?.dept||'';
   f_manager.value=i?.manager||''; f_phone.value=i?.phone||''; f_edu.value=i?.edu||'';
   f_status.value=i?.status||''; f_total.value=i?.total??''; f_read.value=i?.read??''; f_reissue.value=i?.reissue??'';
-  f_readerName.value=i?.readerName||''; f_readerQty.value=i?.readerQty??''; f_issuerName.value=i?.issuerName||''; f_issuerQty.value=i?.issuerQty??''; f_baseDate.value=i?.baseDate||''; curPD=Array.isArray(i?.progressDates)?[...i.progressDates]:[]; renderPDTags(); curNotes=Array.isArray(i?.noteList)?i.noteList.map(n=>({...n})):(i?.note?[{d:'',t:i.note}]:[]); renderNoteList();
+  curReaders=Array.isArray(i?.readers)?i.readers.map(r=>({...r})):(i?.readerName?[{name:i.readerName,qty:i.readerQty||0}]:[]); curIssuers=Array.isArray(i?.issuers)?i.issuers.map(r=>({...r})):(i?.issuerName?[{name:i.issuerName,qty:i.issuerQty||0}]:[]); renderEquip(); f_baseDate.value=i?.baseDate||''; curPD=Array.isArray(i?.progressDates)?[...i.progressDates]:[]; renderPDTags(); curNotes=Array.isArray(i?.noteList)?i.noteList.map(n=>({...n})):(i?.note?[{d:'',t:i.note}]:[]); renderNoteList();
   f_baseSupport.value=i?.baseSupport||''; f_baseSupportEtc.value=i?.baseSupportEtc||'';
   f_branchSupport.value=i?.branchSupport||''; f_branchSupportEtc.value=i?.branchSupportEtc||'';
   toggleEtc('base'); toggleEtc('branch');
@@ -852,12 +872,14 @@ document.getElementById('modalX').onclick=closeModal;
 document.getElementById('modalCancel').onclick=closeModal;
 document.getElementById('f_progressPick').onchange=function(){ const v=this.value; if(v&&!curPD.includes(v)){ curPD.push(v); curPD.sort(); renderPDTags(); } const inp=this; setTimeout(()=>{inp.value='';},100); };
 document.getElementById('addNote').onclick=()=>{ const d=document.getElementById('f_noteDate').value; const t=document.getElementById('f_noteText').value.trim(); if(!t){ document.getElementById('f_noteText').focus(); return; } curNotes.push({d,t}); curNotes.sort((a,b)=>(a.d||'zzz').localeCompare(b.d||'zzz')); renderNoteList(); document.getElementById('f_noteDate').value=''; document.getElementById('f_noteText').value=''; document.getElementById('f_noteText').focus(); };
+document.getElementById('addReader').onclick=()=>{ const n=document.getElementById('f_readerSel').value; const q=+document.getElementById('f_readerQtyIn').value||0; if(!n)return; const ex=curReaders.find(r=>r.name===n); if(ex)ex.qty=q; else curReaders.push({name:n,qty:q}); renderEquip(); document.getElementById('f_readerSel').value=''; document.getElementById('f_readerQtyIn').value=''; };
+document.getElementById('addIssuer').onclick=()=>{ const n=document.getElementById('f_issuerSel').value; const q=+document.getElementById('f_issuerQtyIn').value||0; if(!n)return; const ex=curIssuers.find(r=>r.name===n); if(ex)ex.qty=q; else curIssuers.push({name:n,qty:q}); renderEquip(); document.getElementById('f_issuerSel').value=''; document.getElementById('f_issuerQtyIn').value=''; };
 document.getElementById('modalSave').onclick=()=>{
   const name=norm(f_name.value); if(!name){ toast('기관명을 입력하세요.'); f_name.focus(); return; }
   const isEdit=!!editingId;
   const rec={ region:norm(f_region.value),name,dept:norm(f_dept.value),manager:norm(f_manager.value),phone:norm(f_phone.value),
     edu:f_edu.value,status:f_status.value,total:numOrNull(f_total.value),read:numOrNull(f_read.value),reissue:numOrNull(f_reissue.value),
-    readerName:norm(f_readerName.value),readerQty:numOrNull(f_readerQty.value),issuerName:norm(f_issuerName.value),issuerQty:numOrNull(f_issuerQty.value),note:fmtNotes(curNotes),noteList:curNotes.map(n=>({...n})),baseDate:f_baseDate.value,progressDates:[...curPD],
+    readers:curReaders.map(r=>({...r})),issuers:curIssuers.map(r=>({...r})),note:fmtNotes(curNotes),noteList:curNotes.map(n=>({...n})),baseDate:f_baseDate.value,progressDates:[...curPD],
     baseSupport:f_baseSupport.value,baseSupportEtc:norm(f_baseSupportEtc.value),
     branchSupport:f_branchSupport.value,branchSupportEtc:norm(f_branchSupportEtc.value) };
   if(rec.total!=null){
