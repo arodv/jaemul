@@ -901,6 +901,8 @@ const panel=modal.querySelector('.modal');
 let expandedId=null;
 function stowPanel(){ modal.appendChild(panel); panel.style.display='none'; }
 function closeModal(){ const dr=panel.closest('.detail-row'); stowPanel(); if(dr)dr.remove(); expandedId=null; editing=false; editingId=null; const has=(DB.years[CUR]||[]).length>0; document.getElementById('dash').classList.toggle('hidden',!has); document.getElementById('welcome').classList.toggle('hidden',has); }
+function pushModalState(){ try{ if(!(history.state&&history.state.dbModal)) history.pushState({dbModal:1},''); }catch(e){} }
+window.addEventListener('popstate',()=>{ if(expandedId!==null&&expandedId!==undefined){ closeModal(); } });
 function openInline(anchorTr){
   closeModal(); panel.style.display='';
   if(anchorTr){
@@ -928,8 +930,8 @@ window.toggleEtc=w=>{
 function showStats(on){
   document.getElementById('instStatsWrap').classList.toggle('hidden',!on);
 }
-document.getElementById('addInstBtn').onclick=()=>{ if(expandedId==='__add'){closeModal();return;} editingId=null; document.getElementById('modalTitle').textContent='기관 추가'; fillForm(null); showStats(false); openInline(null); document.getElementById('dash').classList.remove('hidden'); document.getElementById('welcome').classList.add('hidden'); expandedId='__add'; setTimeout(()=>f_name.focus(),50); };
-window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); editingId=id; expandedId=id; setTimeout(()=>{ const dr=document.querySelector('.detail-row')||tr; if(dr){ const y=dr.getBoundingClientRect().top+window.scrollY-64; window.scrollTo({top:y<0?0:y,behavior:'smooth'}); } },90); };
+document.getElementById('addInstBtn').onclick=()=>{ if(expandedId==='__add'){closeModal();return;} editingId=null; document.getElementById('modalTitle').textContent='기관 추가'; fillForm(null); showStats(false); openInline(null); document.getElementById('dash').classList.remove('hidden'); document.getElementById('welcome').classList.add('hidden'); expandedId='__add'; pushModalState(); setTimeout(()=>f_name.focus(),50); };
+window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); editingId=id; expandedId=id; pushModalState(); setTimeout(()=>{ const dr=document.querySelector('.detail-row')||tr; if(dr){ const y=dr.getBoundingClientRect().top+window.scrollY-64; window.scrollTo({top:y<0?0:y,behavior:'smooth'}); } },90); };
 document.getElementById('modalX').onclick=closeModal;
 document.getElementById('modalCancel').onclick=closeModal;
 document.getElementById('f_pdRange').onclick=(e)=>{ e.stopPropagation(); openPdCal(); };
