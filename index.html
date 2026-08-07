@@ -165,11 +165,7 @@
   .date-badge{display:inline-block;background:#DBF0E7;color:#0A7A52;border:1px solid #a9dcc6;border-radius:7px;padding:4px 11px;font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .mgr-phone{color:var(--muted)}
   tbody td .muted-cell{color:#c3ccd8}
-  tr.group-row td{background:#EEF3F9;padding:9px 16px!important;border-top:2px solid #dbe4ee}
-  tr.group-row .grp-name{font-weight:800;font-size:13.5px;color:var(--ink)}
-  tr.group-row .grp-cnt{font-weight:700;font-size:12px;color:var(--scan-d);margin-left:9px;background:#fff;border-radius:10px;padding:2px 9px}
-  tbody tr.clickrow.in-group td.mobile-title .mt-name{padding-left:16px;position:relative}
-  tbody tr.clickrow.in-group td.mobile-title .mt-name::before{content:'└';position:absolute;left:2px;color:#aab6c4}
+  .grp-tag{font-size:11px;font-weight:700;color:var(--scan-d);background:#E8F3EE;border-radius:5px;padding:2px 7px;margin-left:7px;vertical-align:middle}
   @media(min-width:769px){.note-clamp{white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.45}}
   .note-row-pc td{background:transparent;padding:0 16px 12px 0;border-top:none}
   .note-row-pc .nr-wrap{margin-left:44px;padding:8px 13px;background:#F1F5F9;border-left:3px solid var(--sc,#cbd5e1);border-radius:0 8px 8px 0;font-size:12.5px;color:var(--ink-2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -813,17 +809,17 @@ function renderTable(){
   const tb=document.getElementById('tbody');
   if(!rows.length){ tb.innerHTML=`<tr class="empty-row"><td colspan="9">조건에 맞는 기관이 없습니다.</td></tr>`; return; }
   const pill=(t,c)=>t?`<span class="pill" style="color:${c};background:${c}1a">${esc(t)}</span>`:'<span class="muted-cell">—</span>';
-  rows.sort((a,b)=>{ const ka=a.group?a.group+'\u0001'+(a.name||''):'\uffff'+(a.name||''); const kb=b.group?b.group+'\u0001'+(b.name||''):'\uffff'+(b.name||''); return ka.localeCompare(kb); });
-  let lastGroup='\u0000', html='', num=0;
+  const RO=['서울','경기','인천','강원','충청','전라','경상','제주'];
+  rows.sort((a,b)=>{ const oa=RO.indexOf(a.region),ob=RO.indexOf(b.region); const ra=oa<0?99:oa,rb=ob<0?99:ob; if(ra!==rb)return ra-rb; const ga=a.group||a.name||'',gb=b.group||b.name||''; if(ga!==gb)return ga.localeCompare(gb); return (a.name||'').localeCompare(b.name||''); });
+  let html='', num=0;
   rows.forEach(i=>{
-    if(i.group){ if(i.group!==lastGroup){ const cnt=rows.filter(x=>x.group===i.group).length; html+=`<tr class="group-row"><td colspan="9"><span class="grp-name">🏢 ${esc(i.group)}</span><span class="grp-cnt">${cnt}곳</span></td></tr>`; lastGroup=i.group; } } else lastGroup='\u0000';
     num++;
     const sc=STATUS_COLORS[i.status]||'#8896A8', ec=EDU_COLORS[i.edu]||'#8896A8';
     const noteOneline=(i.note||'').replace(/\s+/g,' ').trim();
-    html+=`<tr class="clickrow${i.region==='인천'?' rg-in':''}${i.group?' in-group':''}" data-id="${i.id}" style="--sc:${sc}" onclick="openDetail('${i.id}')">
+    html+=`<tr class="clickrow${i.region==='인천'?' rg-in':''}" data-id="${i.id}" style="--sc:${sc}" onclick="openDetail('${i.id}')">
       <td class="num" data-label="연번">${num}</td>
       <td data-label="권역">${i.region?esc(i.region):'<span class="muted-cell">—</span>'}</td>
-      <td class="mobile-title" data-label="기관명"><span class="mt-name">${esc(i.name)||'—'}</span><button class="detail-btn" onclick="event.stopPropagation();openDetail('${i.id}')">상세 ›</button></td>
+      <td class="mobile-title" data-label="기관명"><span class="mt-name">${esc(i.name)||'—'}</span>${i.group?`<span class="grp-tag">${esc(i.group)}</span>`:''}<button class="detail-btn" onclick="event.stopPropagation();openDetail('${i.id}')">상세 ›</button></td>
       <td data-label="담당자">${(i.phone||i.manager)?`${i.phone?`<span class="mgr-phone">${esc(i.phone)}</span>`:''}${i.phone&&i.manager?' · ':''}${i.manager?esc(i.manager):''}`:'<span class="muted-cell">—</span>'}</td>
       <td class="m-hide c-mid" data-label="교육">${pill(i.edu,ec)}</td><td class="c-mid" data-label="조사상태">${pill(i.status,sc)}</td>
       <td class="m-hide c-mid" data-label="기준일자">${i.baseDate?fmtDate(i.baseDate):'<span class="muted-cell">—</span>'}</td>
