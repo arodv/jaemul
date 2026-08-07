@@ -160,18 +160,18 @@
   /* 특이사항 셀 */
   td.note-cell{max-width:520px;color:var(--ink-2)}
   .note-clamp{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .note-lines{display:flex;flex-direction:column;gap:4px}
+  .note-line{display:flex;gap:6px;line-height:1.4;font-size:12.5px;color:var(--ink-2)}
+  .note-line b{color:var(--scan-d);font-weight:800;flex:0 0 auto;font-variant-numeric:tabular-nums}
+  .note-line span{white-space:normal}
   td.c-mid{text-align:center}
   th.c-mid{text-align:center}
   .date-badge{display:inline-block;background:#DBF0E7;color:#0A7A52;border:1px solid #a9dcc6;border-radius:7px;padding:4px 11px;font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .mgr-phone{color:var(--muted)}
   tbody td .muted-cell{color:#c3ccd8}
-  .grp-tag{font-size:11px;font-weight:700;color:var(--scan-d);background:#E8F3EE;border-radius:5px;padding:2px 7px;margin-left:7px;vertical-align:middle}
-  tr.grp-head td{background:#EDF2F8;cursor:pointer;padding:12px 16px!important;border-top:2px solid #d7e1ed}
-  tr.grp-head:hover td{background:#E3EBF6}
-  tr.grp-head .grp-arrow{color:var(--scan-d);margin-right:9px;font-size:11px;display:inline-block;width:12px}
-  tr.grp-head .grp-title{font-size:14px;font-weight:800;color:var(--ink)}
-  tr.grp-head .grp-count{font-weight:700;font-size:12px;color:var(--scan-d);margin-left:10px;background:#fff;border-radius:10px;padding:2px 10px}
-  tr.grp-head .grp-sub{float:right;font-size:12px;color:var(--muted);font-weight:600}
+  .pk-arrow{color:var(--scan-d);margin-right:7px;font-size:10px;display:inline-block;width:10px}
+  .kids-badge{font-size:11px;font-weight:700;color:var(--scan-d);background:#E8F3EE;border-radius:5px;padding:2px 7px;margin-left:8px;vertical-align:middle}
+  tr.parent-row{cursor:pointer}
   tbody tr.clickrow.sub-row td.mobile-title .mt-name{padding-left:22px;position:relative}
   tbody tr.clickrow.sub-row td.mobile-title .mt-name::before{content:'└';position:absolute;left:5px;color:#aab6c4}
   tbody tr.clickrow.sub-row td[data-label="연번"]{color:var(--muted)}
@@ -413,7 +413,7 @@
         <div class="field"><label>권역</label>
           <select id="f_region"><option value="">선택</option><option>서울</option><option>경기</option><option>인천</option><option>강원</option><option>충청</option><option>전라</option><option>경상</option><option>제주</option></select></div>
         <div class="field"><label>기관명 *</label><input id="f_name" placeholder="예: 고양시청"></div>
-        <div class="field"><label>상위기관(그룹) <span style="font-weight:400;color:var(--muted)">(선택 · 예: 고양시)</span></label><input id="f_group" placeholder="산하기관이면 상위기관명" list="groupList"><datalist id="groupList"></datalist></div>
+        <div class="field"><label>상위(대표)기관 <span style="font-weight:400;color:var(--muted)">(산하기관인 경우만 · 예: 고양시청)</span></label><input id="f_group" placeholder="예: 고양시청" list="groupList"><datalist id="groupList"></datalist></div>
         <div class="field"><label>주관부서</label><input id="f_dept" placeholder="예: 회계과"></div>
         <div class="field"><label>담당자</label><input id="f_manager" placeholder="예: 홍길동 주무관"></div>
         <div class="field"><label>연락처</label><input id="f_phone" placeholder="예: 031-000-0000"></div>
@@ -822,25 +822,37 @@ function renderTable(){
   const pill=(t,c)=>t?`<span class="pill" style="color:${c};background:${c}1a">${esc(t)}</span>`:'<span class="muted-cell">—</span>';
   const RO=['서울','경기','인천','강원','충청','전라','경상','제주'];
   const roIdx=r=>{const x=RO.indexOf(r);return x<0?99:x;};
-  const gmap={}; const units=[];
-  rows.forEach(i=>{ if(i.group)(gmap[i.group]=gmap[i.group]||[]).push(i); });
-  Object.keys(gmap).forEach(g=>{ const items=gmap[g].slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')); units.push({type:'g',name:g,region:items[0].region,items}); });
-  rows.forEach(i=>{ if(!i.group)units.push({type:'s',inst:i,region:i.region,name:i.name}); });
-  units.sort((a,b)=>{ const ra=roIdx(a.region),rb=roIdx(b.region); if(ra!==rb)return ra-rb; return ((a.name)||'').localeCompare((b.name)||''); });
-  const mkRow=(i,idx,sub)=>{ const sc=STATUS_COLORS[i.status]||'#8896A8', ec=EDU_COLORS[i.edu]||'#8896A8'; const noteOneline=(i.note||'').replace(/\s+/g,' ').trim(); return `<tr class="clickrow${i.region==='인천'?' rg-in':''}${sub?' sub-row':''}" data-id="${i.id}" style="--sc:${sc}" onclick="openDetail('${i.id}')">
+  const childMap={};
+  rows.forEach(i=>{ if(i.group)(childMap[i.group]=childMap[i.group]||[]).push(i); });
+  const tops=rows.filter(i=>!i.group);
+  tops.sort((a,b)=>{ const ra=roIdx(a.region),rb=roIdx(b.region); if(ra!==rb)return ra-rb; return (a.name||'').localeCompare(b.name||''); });
+  const mkRow=(i,idx,sub)=>{
+    const sc=STATUS_COLORS[i.status]||'#8896A8', ec=EDU_COLORS[i.edu]||'#8896A8';
+    const noteOneline=(i.note||'').replace(/\s+/g,' ').trim();
+    const noteItems=Array.isArray(i.noteList)&&i.noteList.length?i.noteList:(i.note?[{d:'',t:i.note}]:[]);
+    const notesCell=noteItems.length?`<div class="note-lines">${noteItems.map(n=>`<div class="note-line">${n.d?`<b>${fmtMD(n.d)}</b>`:''}<span>${esc(n.t)}</span></div>`).join('')}</div>`:'<span class="muted-cell">—</span>';
+    const kids=childMap[i.name]||[]; const hasKids=!sub&&kids.length>0; const open=EXG.has(i.name);
+    const nameInner = hasKids
+      ? `<span class="pk-arrow">${open?'▼':'▶'}</span><span class="mt-name">${esc(i.name)||'—'}</span><span class="kids-badge">외 ${kids.length}곳</span>`
+      : `<span class="mt-name">${esc(i.name)||'—'}</span>`;
+    const clickAttr = hasKids ? `onclick="toggleGroup('${esc(i.name)}')"` : `onclick="openDetail('${i.id}')"`;
+    return `<tr class="clickrow${i.region==='인천'?' rg-in':''}${sub?' sub-row':''}${hasKids?' parent-row':''}" data-id="${i.id}" style="--sc:${sc}" ${clickAttr}>
       <td class="num" data-label="연번">${idx}</td>
       <td data-label="권역">${i.region?esc(i.region):'<span class="muted-cell">—</span>'}</td>
-      <td class="mobile-title" data-label="기관명"><span class="mt-name">${esc(i.name)||'—'}</span><button class="detail-btn" onclick="event.stopPropagation();openDetail('${i.id}')">상세 ›</button></td>
+      <td class="mobile-title" data-label="기관명">${nameInner}<button class="detail-btn" onclick="event.stopPropagation();openDetail('${i.id}')">상세 ›</button></td>
       <td data-label="담당자">${(i.phone||i.manager)?`${i.phone?`<span class="mgr-phone">${esc(i.phone)}</span>`:''}${i.phone&&i.manager?' · ':''}${i.manager?esc(i.manager):''}`:'<span class="muted-cell">—</span>'}</td>
       <td class="m-hide c-mid" data-label="교육">${pill(i.edu,ec)}</td><td class="c-mid" data-label="조사상태">${pill(i.status,sc)}</td>
       <td class="m-hide c-mid" data-label="기준일자">${i.baseDate?fmtDate(i.baseDate):'<span class="muted-cell">—</span>'}</td>
       <td class="c-mid" data-label="지원일자">${fmtPDGroup(i.progressDates)?`<span class="date-badge">${fmtPDGroup(i.progressDates)}</span>`:'<span class="muted-cell">—</span>'}</td>
-      <td class="note-cell m-hide" data-label="특이사항" title="${esc(noteOneline)}">${noteOneline?`<span class="note-clamp">${esc(noteOneline)}</span>`:'<span class="muted-cell">—</span>'}</td>
+      <td class="note-cell m-hide" data-label="특이사항" title="${esc(noteOneline)}">${notesCell}</td>
     </tr>`; };
   let html='', num=0;
-  units.forEach(u=>{
-    if(u.type==='g'){ const open=EXG.has(u.name); const doneN=u.items.filter(x=>x.status==='완료').length; html+=`<tr class="grp-head${open?' open':''}" onclick="toggleGroup('${esc(u.name)}')"><td colspan="9"><span class="grp-arrow">${open?'▼':'▶'}</span><span class="grp-title">🏢 ${esc(u.name)}</span><span class="grp-count">${u.items.length}곳</span><span class="grp-sub">${open?'접기':'펼쳐서 보기'}</span></td></tr>`; if(open)u.items.forEach(i=>{ num++; html+=mkRow(i,num,true); }); }
-    else { num++; html+=mkRow(u.inst,num,false); }
+  tops.forEach(top=>{
+    num++; html+=mkRow(top,num,false);
+    const kids=childMap[top.name]||[];
+    if(kids.length && EXG.has(top.name)){
+      kids.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).forEach(k=>{ num++; html+=mkRow(k,num,true); });
+    }
   });
   tb.innerHTML=html;
 }
@@ -899,7 +911,7 @@ function openInline(anchorTr){
 }
 function fillForm(i){
   f_region.value=i?.region||''; f_name.value=i?.name||''; f_group.value=i?.group||''; f_dept.value=i?.dept||'';
-  { const gs=[...new Set(Object.values(DB.years).flat().map(x=>x.group).filter(Boolean))].sort(); const dl=document.getElementById('groupList'); if(dl)dl.innerHTML=gs.map(g=>`<option value="${esc(g)}">`).join(''); }
+  { const gs=[...new Set(Object.values(DB.years).flat().map(x=>x.name).filter(Boolean))].sort(); const dl=document.getElementById('groupList'); if(dl)dl.innerHTML=gs.map(g=>`<option value="${esc(g)}">`).join(''); }
   f_manager.value=i?.manager||''; f_phone.value=i?.phone||''; f_edu.value=i?.edu||'';
   f_status.value=i?.status||''; f_total.value=i?.total??''; f_read.value=i?.read??''; f_reissue.value=i?.reissue??'';
   curReaders=Array.isArray(i?.readers)?i.readers.map(r=>({...r})):(i?.readerName?[{name:i.readerName,qty:i.readerQty||0}]:[]); curIssuers=Array.isArray(i?.issuers)?i.issuers.map(r=>({...r})):(i?.issuerName?[{name:i.issuerName,qty:i.issuerQty||0}]:[]); renderEquip(); f_baseDate.value=i?.baseDate||''; curPD=Array.isArray(i?.progressDates)?[...i.progressDates]:[]; renderPDTags(); pdStart=null; pdEnd=null; {const pc=document.getElementById('pdCal'); if(pc)pc.style.display='none';} curNotes=Array.isArray(i?.noteList)?i.noteList.map(n=>({...n})):(i?.note?[{d:'',t:i.note}]:[]); renderNoteList();
