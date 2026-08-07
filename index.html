@@ -824,7 +824,8 @@ function renderTable(){
   const roIdx=r=>{const x=RO.indexOf(r);return x<0?99:x;};
   const childMap={};
   rows.forEach(i=>{ if(i.group)(childMap[i.group]=childMap[i.group]||[]).push(i); });
-  const tops=rows.filter(i=>!i.group);
+  const topNames=new Set(rows.filter(i=>!i.group).map(i=>i.name));
+  const tops=rows.filter(i=>!i.group || !topNames.has(i.group));
   tops.sort((a,b)=>{ const ra=roIdx(a.region),rb=roIdx(b.region); if(ra!==rb)return ra-rb; return (a.name||'').localeCompare(b.name||''); });
   const mkRow=(i,idx,sub)=>{
     const sc=STATUS_COLORS[i.status]||'#8896A8', ec=EDU_COLORS[i.edu]||'#8896A8';
