@@ -169,6 +169,8 @@
   .date-badge{display:inline-block;background:#DBF0E7;color:#0A7A52;border:1px solid #a9dcc6;border-radius:7px;padding:4px 11px;font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .mgr-phone{color:var(--muted)}
   tbody td .muted-cell{color:#c3ccd8}
+  .sum-status{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .sum-st-lbl{font-size:11px;color:var(--muted);font-weight:700}
   .pk-arrow{color:var(--scan-d);margin-right:7px;font-size:10px;display:inline-block;width:10px}
   .kids-badge{font-size:11px;font-weight:700;color:var(--scan-d);background:#E8F3EE;border-radius:5px;padding:2px 7px;margin-left:8px;vertical-align:middle}
   tr.parent-row{cursor:pointer}
@@ -378,7 +380,7 @@
           <table>
             <thead><tr>
               <th>연번</th><th>권역</th><th>기관명</th><th>담당자</th>
-              <th class="c-mid">교육</th><th class="c-mid">조사상태</th><th class="c-mid">기준일자</th><th class="c-mid">지원일자</th><th>특이사항</th>
+              <th class="c-mid">교육</th><th class="c-mid">조사상태</th><th class="c-mid">재발행상태</th><th class="c-mid">기준일자</th><th class="c-mid">지원일자</th><th>특이사항</th>
             </tr></thead>
             <tbody id="tbody"></tbody>
           </table>
@@ -441,6 +443,8 @@
           <select id="f_edu"><option value="">선택</option><option>미실시</option><option>일정협의중</option><option>실시예정</option><option>실시완료</option><option>해당없음</option></select></div>
         <div class="field"><label>재물조사 진행상태</label>
           <select id="f_status"><option value="">선택</option><option>대기</option><option>일정협의중</option><option>진행중</option><option>완료</option><option>보류</option></select></div>
+        <div class="field"><label>재발행 진행상태</label>
+          <select id="f_reissueStatus"><option value="">선택</option><option>대기</option><option>일정협의중</option><option>진행중</option><option>완료</option><option>보류</option></select></div>
         <div class="field"><label>재물조사 기준일자 (2026년)</label><input id="f_baseDate" type="date" min="2026-01-01" max="2026-12-31"></div>
         <div class="field full"><label>재물조사 지원일자 <span style="font-weight:400;color:var(--muted)">(달력에서 시작일·종료일 클릭 → 자동 추가 · 하루면 같은 날 두 번)</span></label>
           <input id="f_pdRange" placeholder="여기를 눌러 달력에서 날짜 선택" readonly style="cursor:pointer">
@@ -838,7 +842,7 @@ function renderTable(){
   const rows=list.filter(i=>{ if(fr&&i.region!==fr)return false; if(fs&&i.status!==fs)return false; if(q&&!(`${i.name} ${i.manager} ${i.note||''}`.toLowerCase().includes(q)))return false; return true; });
   document.getElementById('tblTitle').textContent=`기관별 현황 (${rows.length})`;
   const tb=document.getElementById('tbody');
-  if(!rows.length){ tb.innerHTML=`<tr class="empty-row"><td colspan="9">조건에 맞는 기관이 없습니다.</td></tr>`; return; }
+  if(!rows.length){ tb.innerHTML=`<tr class="empty-row"><td colspan="10">조건에 맞는 기관이 없습니다.</td></tr>`; return; }
   const pill=(t,c)=>t?`<span class="pill" style="color:${c};background:${c}1a">${esc(t)}</span>`:'<span class="muted-cell">—</span>';
   const RO=['서울','경기','인천','강원','충청','전라','경상','제주'];
   const roIdx=r=>{const x=RO.indexOf(r);return x<0?99:x;};
@@ -865,6 +869,7 @@ function renderTable(){
       <td class="mobile-title" data-label="기관명">${nameInner}<button class="detail-btn" onclick="event.stopPropagation();openDetail('${i.id}')">상세 ›</button></td>
       <td data-label="담당자">${(i.phone||i.manager)?`${i.phone?`<span class="mgr-phone">${esc(i.phone)}</span>`:''}${i.phone&&i.manager?' · ':''}${i.manager?esc(i.manager):''}`:'<span class="muted-cell">—</span>'}</td>
       <td class="m-hide c-mid" data-label="교육">${pill(i.edu,ec)}</td><td class="c-mid" data-label="조사상태">${pill(i.status,sc)}</td>
+      <td class="c-mid" data-label="재발행상태">${i.reissueStatus?pill(i.reissueStatus,STATUS_COLORS[i.reissueStatus]||'#8896A8'):'<span class="muted-cell">—</span>'}</td>
       <td class="m-hide c-mid" data-label="기준일자">${i.baseDate?fmtDate(i.baseDate):'<span class="muted-cell">—</span>'}</td>
       <td class="c-mid" data-label="지원일자">${fmtPDGroup(i.progressDates)?`<span class="date-badge">${fmtPDGroup(i.progressDates)}</span>`:'<span class="muted-cell">—</span>'}</td>
       <td class="note-cell m-hide" data-label="특이사항" title="${esc(noteOneline)}">${notesCell}</td>
@@ -905,7 +910,7 @@ function toggleEdit(force){ const areas=[...document.querySelectorAll('.edit-are
 window.toggleEdit=toggleEdit;
 function renderSummary(it){
   const el=document.getElementById('instSummary'); if(!el)return;
-  const sc=STATUS_COLORS[it.status]||'#8896A8', ec=EDU_COLORS[it.edu]||'#8896A8';
+  const sc=STATUS_COLORS[it.status]||'#8896A8', ec=EDU_COLORS[it.edu]||'#8896A8', rsc=STATUS_COLORS[it.reissueStatus]||'#8896A8';
   const pill=(t,c)=>t?`<span class="pill" style="color:${c};background:${c}1a">${esc(t)}</span>`:'<span class="muted-cell">미정</span>';
   const row=(l,v)=>`<div class="sum-item"><span class="sum-lbl">${l}</span><span class="sum-val">${v}</span></div>`;
   const pd=fmtPDGroup(it.progressDates);
@@ -918,7 +923,7 @@ function renderSummary(it){
   el.innerHTML=`
     <div class="sum-top">
       <div><span class="sum-name">${esc(it.name)||'기관'}</span>${it.group?`<span class="sum-parent">${esc(it.group)} 산하</span>`:''}</div>
-      <div>${pill(it.status,sc)}</div>
+      <div class="sum-status"><span class="sum-st-lbl">조사</span>${pill(it.status,sc)}<span class="sum-st-lbl">재발행</span>${pill(it.reissueStatus,rsc)}</div>
     </div>
     <div class="sum-grid">
       ${row('권역',esc(it.region)||'—')}
@@ -975,7 +980,7 @@ function fillForm(i){
   f_region.value=i?.region||''; f_name.value=i?.name||''; f_group.value=i?.group||''; f_dept.value=i?.dept||'';
   { const gs=[...new Set(Object.values(DB.years).flat().map(x=>x.name).filter(Boolean))].sort(); const dl=document.getElementById('groupList'); if(dl)dl.innerHTML=gs.map(g=>`<option value="${esc(g)}">`).join(''); }
   f_manager.value=i?.manager||''; f_phone.value=i?.phone||''; f_edu.value=i?.edu||'';
-  f_status.value=i?.status||''; f_total.value=i?.total??''; f_read.value=i?.read??''; f_reissue.value=i?.reissue??'';
+  f_status.value=i?.status||''; f_reissueStatus.value=i?.reissueStatus||''; f_total.value=i?.total??''; f_read.value=i?.read??''; f_reissue.value=i?.reissue??'';
   curReaders=Array.isArray(i?.readers)?i.readers.map(r=>({...r})):(i?.readerName?[{name:i.readerName,qty:i.readerQty||0}]:[]); curIssuers=Array.isArray(i?.issuers)?i.issuers.map(r=>({...r})):(i?.issuerName?[{name:i.issuerName,qty:i.issuerQty||0}]:[]); renderEquip(); f_baseDate.value=i?.baseDate||''; curPD=Array.isArray(i?.progressDates)?[...i.progressDates]:[]; renderPDTags(); pdStart=null; pdEnd=null; {const pc=document.getElementById('pdCal'); if(pc)pc.style.display='none';} curNotes=Array.isArray(i?.noteList)?i.noteList.map(n=>({...n})):(i?.note?[{d:'',t:i.note}]:[]); renderNoteList();
   f_baseSupport.value=i?.baseSupport||''; f_baseSupportEtc.value=i?.baseSupportEtc||'';
   f_branchSupport.value=i?.branchSupport||''; f_branchSupportEtc.value=i?.branchSupportEtc||'';
@@ -1002,7 +1007,7 @@ document.getElementById('modalSave').onclick=()=>{
   const name=norm(f_name.value); if(!name){ toast('기관명을 입력하세요.'); f_name.focus(); return; }
   const isEdit=!!editingId;
   const rec={ region:norm(f_region.value),name,group:norm(f_group.value),dept:norm(f_dept.value),manager:norm(f_manager.value),phone:norm(f_phone.value),
-    edu:f_edu.value,status:f_status.value,total:numOrNull(f_total.value),read:numOrNull(f_read.value),reissue:numOrNull(f_reissue.value),
+    edu:f_edu.value,status:f_status.value,reissueStatus:f_reissueStatus.value,total:numOrNull(f_total.value),read:numOrNull(f_read.value),reissue:numOrNull(f_reissue.value),
     readers:curReaders.map(r=>({...r})),issuers:curIssuers.map(r=>({...r})),note:fmtNotes(curNotes),noteList:curNotes.map(n=>({...n})),baseDate:f_baseDate.value,progressDates:[...curPD],
     baseSupport:f_baseSupport.value,baseSupportEtc:norm(f_baseSupportEtc.value),
     branchSupport:f_branchSupport.value,branchSupportEtc:norm(f_branchSupportEtc.value) };
