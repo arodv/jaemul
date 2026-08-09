@@ -236,6 +236,24 @@
   .stats-head .inp{min-width:220px}
   /* 기관 상세 안 통계 */
   .inst-stats{margin-top:22px;border-top:1px solid var(--line);padding:18px 24px 24px}
+  /* 현황 요약 */
+  .inst-summary{padding:20px 24px 22px;background:linear-gradient(180deg,#F6FAF9,#fff)}
+  .inst-summary .sum-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px}
+  .inst-summary .sum-name{font-size:20px;font-weight:800;color:var(--ink)}
+  .inst-summary .sum-parent{font-size:12px;color:var(--muted);margin-left:9px;font-weight:600}
+  .inst-summary .sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 18px}
+  .inst-summary .sum-item{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .inst-summary .sum-lbl{font-size:11px;color:var(--muted);font-weight:700}
+  .inst-summary .sum-val{font-size:14.5px;font-weight:700;color:var(--ink);white-space:normal}
+  .inst-summary .sum-block{margin-top:16px;padding-top:14px;border-top:1px solid #e8eef4}
+  .inst-summary .sum-block .sum-lbl{margin-bottom:6px;display:block}
+  .inst-summary .sum-equip{font-size:14px;color:var(--ink);font-weight:600}
+  .inst-summary .sum-note{font-size:13.5px;color:var(--ink-2);line-height:1.5;padding:2px 0}
+  .inst-summary .sum-note b{color:var(--scan-d);font-weight:800;margin-right:5px}
+  .edit-divider{margin:16px 24px 4px;padding:12px 16px;cursor:pointer;background:var(--wash);border-radius:10px;text-align:center;border:1px solid var(--line);transition:background .15s}
+  .edit-divider:hover{background:#E8EEF5}
+  .edit-divider span{font-size:13px;font-weight:800;color:var(--ink-2)}
+  @media(max-width:768px){.inst-summary .sum-grid{grid-template-columns:repeat(2,1fr)}}
   .inst-stats h4{font-size:15px;font-weight:700;margin-bottom:3px}
   .inst-stats .cap{font-size:12px;color:var(--muted);margin-bottom:12px}
   .det-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:16px}
@@ -408,7 +426,9 @@
 <div class="modal-bg" id="modal">
   <div class="modal">
     <div class="mh"><h3 id="modalTitle">기관 추가</h3><button class="mx" id="modalX">×</button></div>
-    <div class="mb">
+    <div id="instSummary" class="inst-summary hidden"></div>
+    <div id="editDivider" class="edit-divider hidden" onclick="toggleEdit()"><span id="editToggleTxt">✏️ 정보 수정하기 ▶</span></div>
+    <div class="mb edit-area hidden">
       <div class="fgrid">
         <div class="field"><label>권역</label>
           <select id="f_region"><option value="">선택</option><option>서울</option><option>경기</option><option>인천</option><option>강원</option><option>충청</option><option>전라</option><option>경상</option><option>제주</option></select></div>
@@ -452,7 +472,7 @@
         <div class="field full"><span class="hint">인식률·재발행률은 물품수를 기준으로 자동 계산됩니다.</span></div>
       </div>
     </div>
-    <div class="mf">
+    <div class="mf edit-area hidden">
       <div style="flex:1"></div>
       <button class="obtn" id="modalCancel">취소</button>
       <button class="btn" id="modalSave">저장</button>
@@ -878,6 +898,43 @@ function instHistory(name){
     return {year:+y, recog:it?it.recog:null, reRate:it?it.reRate:null, total:it?it.total:null, read:it?it.read:null, reissue:it?it.reissue:null};
   });
 }
+function showSummary(on){ const s=document.getElementById('instSummary'),d=document.getElementById('editDivider'); if(s)s.classList.toggle('hidden',!on); if(d)d.classList.toggle('hidden',!on); }
+function toggleEdit(force){ const areas=[...document.querySelectorAll('.edit-area')]; const cur=areas.length&&!areas[0].classList.contains('hidden'); const show=force!==undefined?force:!cur; areas.forEach(a=>a.classList.toggle('hidden',!show)); const t=document.getElementById('editToggleTxt'); if(t)t.textContent=show?'✏️ 정보 수정 닫기 ▼':'✏️ 정보 수정하기 ▶'; if(show){const mb=document.querySelector('.mb.edit-area'); if(mb){setTimeout(()=>{const y=mb.getBoundingClientRect().top+window.scrollY-70; window.scrollTo({top:y,behavior:'smooth'});},60);} } }
+window.toggleEdit=toggleEdit;
+function renderSummary(it){
+  const el=document.getElementById('instSummary'); if(!el)return;
+  const sc=STATUS_COLORS[it.status]||'#8896A8', ec=EDU_COLORS[it.edu]||'#8896A8';
+  const pill=(t,c)=>t?`<span class="pill" style="color:${c};background:${c}1a">${esc(t)}</span>`:'<span class="muted-cell">미정</span>';
+  const row=(l,v)=>`<div class="sum-item"><span class="sum-lbl">${l}</span><span class="sum-val">${v}</span></div>`;
+  const pd=fmtPDGroup(it.progressDates);
+  const supBase=it.baseSupport==='기타'?(esc(it.baseSupportEtc)||'기타'):(esc(it.baseSupport)||'—');
+  const supBranch=it.branchSupport==='기타'?(esc(it.branchSupportEtc)||'기타'):(esc(it.branchSupport)||'—');
+  const readers=(it.readers||[]).map(r=>`${esc(r.name)} ${r.qty}대`).join(', ')||'—';
+  const issuers=(it.issuers||[]).map(r=>`${esc(r.name)} ${r.qty}대`).join(', ')||'—';
+  const noteItems=Array.isArray(it.noteList)&&it.noteList.length?it.noteList:(it.note?[{d:'',t:it.note}]:[]);
+  const notes=noteItems.length?noteItems.map(n=>`<div class="sum-note">${n.d?`<b>${fmtMD(n.d)}</b>`:''}${esc(n.t)}</div>`).join(''):'<span class="muted-cell">—</span>';
+  el.innerHTML=`
+    <div class="sum-top">
+      <div><span class="sum-name">${esc(it.name)||'기관'}</span>${it.group?`<span class="sum-parent">${esc(it.group)} 산하</span>`:''}</div>
+      <div>${pill(it.status,sc)}</div>
+    </div>
+    <div class="sum-grid">
+      ${row('권역',esc(it.region)||'—')}
+      ${row('담당자',(it.phone?esc(it.phone)+' · ':'')+(esc(it.manager)||'—'))}
+      ${row('교육',pill(it.edu,ec))}
+      ${row('기준일자',it.baseDate?fmtDate(it.baseDate):'—')}
+      ${row('지원일자',pd?`<span class="date-badge">${pd}</span>`:'—')}
+      ${row('본청 지원방식',supBase)}
+      ${row('외청 지원방식',supBranch)}
+      ${row('물품수',fmtInt(it.total))}
+      ${row('리딩수',fmtInt(it.read))}
+      ${row('재발행',fmtInt(it.reissue))}
+      ${row('인식률',fmtPct(it.recog))}
+      ${row('재발행률',fmtPct(it.reRate))}
+    </div>
+    <div class="sum-block"><span class="sum-lbl">장비현황</span><div class="sum-equip">리더기 ${readers}　·　발행기 ${issuers}</div></div>
+    <div class="sum-block"><span class="sum-lbl">특이사항</span>${notes}</div>`;
+}
 function renderInstDetail(name){
   const cur=(DB.years[CUR]||[]).find(x=>x.name===name)||{};
   document.getElementById('detCards').innerHTML=`
@@ -930,8 +987,8 @@ window.toggleEtc=w=>{
 function showStats(on){
   document.getElementById('instStatsWrap').classList.toggle('hidden',!on);
 }
-document.getElementById('addInstBtn').onclick=()=>{ if(expandedId==='__add'){closeModal();return;} editingId=null; document.getElementById('modalTitle').textContent='기관 추가'; fillForm(null); showStats(false); openInline(null); document.getElementById('dash').classList.remove('hidden'); document.getElementById('welcome').classList.add('hidden'); expandedId='__add'; pushModalState(); setTimeout(()=>f_name.focus(),50); };
-window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세 · 수정'; fillForm(it); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); editingId=id; expandedId=id; pushModalState(); setTimeout(()=>{ const dr=document.querySelector('.detail-row')||tr; if(dr){ const y=dr.getBoundingClientRect().top+window.scrollY-64; window.scrollTo({top:y<0?0:y,behavior:'smooth'}); } },90); };
+document.getElementById('addInstBtn').onclick=()=>{ if(expandedId==='__add'){closeModal();return;} editingId=null; document.getElementById('modalTitle').textContent='기관 추가'; fillForm(null); showSummary(false); toggleEdit(true); showStats(false); openInline(null); document.getElementById('dash').classList.remove('hidden'); document.getElementById('welcome').classList.add('hidden'); expandedId='__add'; pushModalState(); setTimeout(()=>f_name.focus(),50); };
+window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(DB.years[CUR]||[]).find(x=>x.id===id); if(!it)return; editingId=id; document.getElementById('modalTitle').textContent='기관 상세'; fillForm(it); renderSummary(it); showSummary(true); toggleEdit(false); showStats(true); renderInstDetail(it.name); const tr=document.querySelector(`#tbody tr[data-id="${id}"]`); openInline(tr); editingId=id; expandedId=id; pushModalState(); setTimeout(()=>{ const dr=document.querySelector('.detail-row')||tr; if(dr){ const y=dr.getBoundingClientRect().top+window.scrollY-64; window.scrollTo({top:y<0?0:y,behavior:'smooth'}); } },90); };
 document.getElementById('modalX').onclick=closeModal;
 document.getElementById('modalCancel').onclick=closeModal;
 document.getElementById('f_pdRange').onclick=(e)=>{ e.stopPropagation(); openPdCal(); };
