@@ -158,12 +158,12 @@
   .status-chip .dot{width:9px;height:9px;border-radius:50%}
   .status-chip .n{font-weight:800;font-variant-numeric:tabular-nums}
   /* 특이사항 셀 */
-  td.note-cell{max-width:520px;color:var(--ink-2)}
+  td.note-cell{min-width:230px;max-width:520px;color:var(--ink-2)}
   .note-clamp{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .note-lines{display:flex;flex-direction:column;gap:4px}
-  .note-line{display:flex;gap:6px;line-height:1.4;font-size:12.5px;color:var(--ink-2)}
-  .note-line b{color:var(--scan-d);font-weight:800;flex:0 0 auto;font-variant-numeric:tabular-nums}
-  .note-line span{white-space:normal}
+  .note-lines{display:block}
+  .note-line{margin-bottom:4px;line-height:1.4;font-size:12.5px;color:var(--ink-2);white-space:normal;word-break:keep-all}
+  .note-line:last-child{margin-bottom:0}
+  .note-line b{color:var(--scan-d);font-weight:800;margin-right:5px;font-variant-numeric:tabular-nums}
   td.c-mid{text-align:center}
   th.c-mid{text-align:center}
   .date-badge{display:inline-block;background:#DBF0E7;color:#0A7A52;border:1px solid #a9dcc6;border-radius:7px;padding:4px 11px;font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.2px}
