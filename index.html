@@ -842,10 +842,12 @@ function renderTable(){
   const pill=(t,c)=>t?`<span class="pill" style="color:${c};background:${c}1a">${esc(t)}</span>`:'<span class="muted-cell">—</span>';
   const RO=['서울','경기','인천','강원','충청','전라','경상','제주'];
   const roIdx=r=>{const x=RO.indexOf(r);return x<0?99:x;};
+  const allNames=new Set(rows.map(i=>i.name));
+  const byName={}; rows.forEach(i=>{ byName[i.name]=i; });
+  const isTop=i=>{ if(!i.group||i.group===i.name||!allNames.has(i.group))return true; const par=byName[i.group]; if(par&&par.group&&par.group!==par.name&&allNames.has(par.group))return true; return false; };
   const childMap={};
-  rows.forEach(i=>{ if(i.group)(childMap[i.group]=childMap[i.group]||[]).push(i); });
-  const topNames=new Set(rows.filter(i=>!i.group).map(i=>i.name));
-  const tops=rows.filter(i=>!i.group || !topNames.has(i.group));
+  rows.forEach(i=>{ if(!isTop(i))(childMap[i.group]=childMap[i.group]||[]).push(i); });
+  const tops=rows.filter(isTop);
   tops.sort((a,b)=>{ const ra=roIdx(a.region),rb=roIdx(b.region); if(ra!==rb)return ra-rb; return (a.name||'').localeCompare(b.name||''); });
   const mkRow=(i,idx,sub)=>{
     const sc=STATUS_COLORS[i.status]||'#8896A8', ec=EDU_COLORS[i.edu]||'#8896A8';
