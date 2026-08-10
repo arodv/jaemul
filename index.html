@@ -1016,6 +1016,8 @@ document.getElementById('modalX').onclick=closeModal;
 document.getElementById('modalCancel').onclick=closeModal;
 document.getElementById('f_pdRange').onclick=(e)=>{ e.stopPropagation(); openPdCal(); };
 document.getElementById('f_rdRange').onclick=(e)=>{ e.stopPropagation(); openRdCal(); };
+document.getElementById('pdCal').addEventListener('click',e=>e.stopPropagation());
+document.getElementById('rdCal').addEventListener('click',e=>e.stopPropagation());
 document.addEventListener('click',e=>{ const cal=document.getElementById('pdCal'); if(cal&&cal.style.display!=='none'&&!cal.contains(e.target)&&e.target.id!=='f_pdRange'){cal.style.display='none';} const rcal=document.getElementById('rdCal'); if(rcal&&rcal.style.display!=='none'&&!rcal.contains(e.target)&&e.target.id!=='f_rdRange'){rcal.style.display='none';} });
 document.getElementById('addNote').onclick=()=>{ const d=document.getElementById('f_noteDate').value; const t=document.getElementById('f_noteText').value.trim(); if(!t){ document.getElementById('f_noteText').focus(); return; } curNotes.push({d,t}); curNotes.sort((a,b)=>(a.d||'zzz').localeCompare(b.d||'zzz')); renderNoteList(); document.getElementById('f_noteDate').value=''; document.getElementById('f_noteText').value=''; document.getElementById('f_noteText').focus(); };
 document.getElementById('addReader').onclick=()=>{ const n=document.getElementById('f_readerSel').value; const q=+document.getElementById('f_readerQtyIn').value||0; if(!n)return; const ex=curReaders.find(r=>r.name===n); if(ex)ex.qty=q; else curReaders.push({name:n,qty:q}); renderEquip(); document.getElementById('f_readerSel').value=''; document.getElementById('f_readerQtyIn').value=''; };
