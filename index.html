@@ -169,6 +169,9 @@
   .date-badge{display:inline-block;background:#DBF0E7;color:#0A7A52;border:1px solid #a9dcc6;border-radius:7px;padding:4px 11px;font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.2px}
   .mgr-phone{color:var(--muted)}
   tbody td .muted-cell{color:#c3ccd8}
+  .st-cell{display:flex;flex-direction:column;align-items:center;gap:5px}
+  .date-badge.sm{font-size:11px;padding:2px 8px}
+  .st-nodate{font-size:11px;color:var(--muted);opacity:.5}
   .sum-status{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
   .sum-st-lbl{font-size:11px;color:var(--muted);font-weight:700}
   .pk-arrow{color:var(--scan-d);margin-right:7px;font-size:10px;display:inline-block;width:10px}
@@ -380,7 +383,7 @@
           <table>
             <thead><tr>
               <th>연번</th><th>권역</th><th>기관명</th><th>담당자</th>
-              <th class="c-mid">교육</th><th class="c-mid">조사상태</th><th class="c-mid">재발행상태</th><th class="c-mid">기준일자</th><th class="c-mid">지원일자</th><th>특이사항</th>
+              <th class="c-mid">교육</th><th class="c-mid">조사상태<br><small style="font-weight:600;opacity:.7">조사지원일</small></th><th class="c-mid">재발행상태<br><small style="font-weight:600;opacity:.7">재발행지원일</small></th><th class="c-mid">기준일자</th><th>특이사항</th>
             </tr></thead>
             <tbody id="tbody"></tbody>
           </table>
@@ -446,10 +449,14 @@
         <div class="field"><label>재발행 진행상태</label>
           <select id="f_reissueStatus"><option value="">선택</option><option>대기</option><option>일정협의중</option><option>진행중</option><option>완료</option><option>보류</option></select></div>
         <div class="field"><label>재물조사 기준일자 (2026년)</label><input id="f_baseDate" type="date" min="2026-01-01" max="2026-12-31"></div>
-        <div class="field full"><label>재물조사 지원일자 <span style="font-weight:400;color:var(--muted)">(달력에서 시작일·종료일 클릭 → 자동 추가 · 하루면 같은 날 두 번)</span></label>
+        <div class="field full"><label>재물조사(조사) 지원일자 <span style="font-weight:400;color:var(--muted)">(달력에서 시작일·종료일 클릭 → 자동 추가 · 하루면 같은 날 두 번)</span></label>
           <input id="f_pdRange" placeholder="여기를 눌러 달력에서 날짜 선택" readonly style="cursor:pointer">
           <div id="pdCal" class="pd-cal" style="display:none"></div>
           <div id="pdTags" class="pd-tags"></div></div>
+        <div class="field full"><label>재발행 지원일자 <span style="font-weight:400;color:var(--muted)">(달력에서 시작일·종료일 클릭 → 자동 추가)</span></label>
+          <input id="f_rdRange" placeholder="여기를 눌러 달력에서 날짜 선택" readonly style="cursor:pointer">
+          <div id="rdCal" class="pd-cal" style="display:none"></div>
+          <div id="rdTags" class="pd-tags"></div></div>
         <div class="field"><label>본청 지원방식</label>
           <select id="f_baseSupport" onchange="toggleEtc('base')"><option value="">선택</option><option>리더기 배부</option><option>인식지원</option><option>자체적으로 관리</option><option>기타</option></select>
           <input id="f_baseSupportEtc" class="hidden" placeholder="직접 입력" style="margin-top:6px"></div>
@@ -466,7 +473,7 @@
               <input id="f_readerQtyIn" type="number" min="1" placeholder="수량"><button type="button" class="obtn" id="addReader">추가</button></div>
             <div id="readerTags" class="equip-tags"></div>
             <div class="equip-row"><span class="equip-lbl">발행기</span>
-              <select id="f_issuerSel"><option value="">종류 선택</option><option>4TM</option><option>4T1</option><option>ANYONE</option><option>BT-100</option></select>
+              <select id="f_issuerSel"><option value="">종류 선택</option><option>4TM</option><option>4T1</option><option>ANYONE</option><option>BT-100</option><option>XT5</option></select>
               <input id="f_issuerQtyIn" type="number" min="1" placeholder="수량"><button type="button" class="obtn" id="addIssuer">추가</button></div>
             <div id="issuerTags" class="equip-tags"></div>
           </div></div>
@@ -524,14 +531,22 @@ const fmtPDGroup=arr=>{
   return groups.map(([a,z])=>{ const ap=a.split('-'),zp=z.split('-'); if(a===z)return `${+ap[1]}/${+ap[2]}`; if(ap[1]===zp[1])return `${+ap[1]}/${+ap[2]}~${+zp[2]}`; return `${+ap[1]}/${+ap[2]}~${+zp[1]}/${+zp[2]}`; }).join(', ');
 };
 let curPD=[];
+let curRD=[];
 function addDays(ds,n){ const [y,m,d]=ds.split('-').map(Number); const dt=new Date(y,m-1,d+n); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; }
 function renderPDTags(){ const el=document.getElementById('pdTags'); if(!el)return; const s=[...curPD].sort(); const groups=[]; if(s.length){ let st=s[0],pv=s[0]; for(let k=1;k<s.length;k++){ if(addDays(pv,1)===s[k]){pv=s[k];}else{groups.push([st,pv]);st=s[k];pv=s[k];} } groups.push([st,pv]); } el.innerHTML=groups.map(([a,z])=>{ const lbl=a===z?fmtMD(a):(a.split('-')[1]===z.split('-')[1]?`${fmtMD(a)}~${+z.split('-')[2]}`:`${fmtMD(a)}~${fmtMD(z)}`); return `<span class="pd-tag">${lbl}<button type="button" onclick="removePDRange('${a}','${z}')">×</button></span>`; }).join(''); }
+function renderRDTags(){ const el=document.getElementById('rdTags'); if(!el)return; const s=[...curRD].sort(); const groups=[]; if(s.length){ let st=s[0],pv=s[0]; for(let k=1;k<s.length;k++){ if(addDays(pv,1)===s[k]){pv=s[k];}else{groups.push([st,pv]);st=s[k];pv=s[k];} } groups.push([st,pv]); } el.innerHTML=groups.map(([a,z])=>{ const lbl=a===z?fmtMD(a):(a.split('-')[1]===z.split('-')[1]?`${fmtMD(a)}~${+z.split('-')[2]}`:`${fmtMD(a)}~${fmtMD(z)}`); return `<span class="pd-tag">${lbl}<button type="button" onclick="removeRDRange('${a}','${z}')">×</button></span>`; }).join(''); }
 window.removePDRange=(a,z)=>{ curPD=curPD.filter(d=>d<a||d>z); renderPDTags(); };
+window.removeRDRange=(a,z)=>{ curRD=curRD.filter(d=>d<a||d>z); renderRDTags(); };
 let pdCalY=2026, pdCalM=7, pdStart=null, pdEnd=null;
+let rdCalY=2026, rdCalM=7, rdStart=null, rdEnd=null;
 window.openPdCal=()=>{ const el=document.getElementById('pdCal'); const show=el.style.display==='none'; el.style.display=show?'block':'none'; if(show){ pdStart=null; pdEnd=null; renderPdCal(); } };
+window.openRdCal=()=>{ const el=document.getElementById('rdCal'); const show=el.style.display==='none'; el.style.display=show?'block':'none'; if(show){ rdStart=null; rdEnd=null; renderRdCal(); } };
 function renderPdCal(){ const el=document.getElementById('pdCal'); if(!el)return; const first=new Date(pdCalY,pdCalM,1), sd=first.getDay(), days=new Date(pdCalY,pdCalM+1,0).getDate(); let h=`<div class="pd-cal-head"><button type="button" onclick="pdCalNav(-1)">‹</button><b>${pdCalY}년 ${pdCalM+1}월</b><button type="button" onclick="pdCalNav(1)">›</button></div><div class="pd-cal-grid">`; ['일','월','화','수','목','금','토'].forEach(d=>h+=`<div class="dow">${d}</div>`); for(let k=0;k<sd;k++)h+=`<div class="pd-cal-day empty"></div>`; for(let d=1;d<=days;d++){ const ds=`${pdCalY}-${String(pdCalM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let cls='pd-cal-day'; if(ds===pdStart||ds===pdEnd)cls+=' sel'; else if(pdStart&&pdEnd&&ds>pdStart&&ds<pdEnd)cls+=' in-range'; h+=`<div class="${cls}" onclick="pdCalPick('${ds}')">${d}</div>`; } h+='</div><div class="pd-cal-hint">'+(pdStart&&!pdEnd?'👉 종료일을 클릭하세요':'시작일을 클릭하세요')+'</div>'; el.innerHTML=h; }
+function renderRdCal(){ const el=document.getElementById('rdCal'); if(!el)return; const first=new Date(rdCalY,rdCalM,1), sd=first.getDay(), days=new Date(rdCalY,rdCalM+1,0).getDate(); let h=`<div class="pd-cal-head"><button type="button" onclick="rdCalNav(-1)">‹</button><b>${rdCalY}년 ${rdCalM+1}월</b><button type="button" onclick="rdCalNav(1)">›</button></div><div class="pd-cal-grid">`; ['일','월','화','수','목','금','토'].forEach(d=>h+=`<div class="dow">${d}</div>`); for(let k=0;k<sd;k++)h+=`<div class="pd-cal-day empty"></div>`; for(let d=1;d<=days;d++){ const ds=`${rdCalY}-${String(rdCalM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let cls='pd-cal-day'; if(ds===rdStart||ds===rdEnd)cls+=' sel'; else if(rdStart&&rdEnd&&ds>rdStart&&ds<rdEnd)cls+=' in-range'; h+=`<div class="${cls}" onclick="rdCalPick('${ds}')">${d}</div>`; } h+='</div><div class="pd-cal-hint">'+(rdStart&&!rdEnd?'👉 종료일을 클릭하세요':'시작일을 클릭하세요')+'</div>'; el.innerHTML=h; }
 window.pdCalNav=n=>{ const nm=pdCalM+n; if(nm<0||nm>11)return; pdCalM=nm; renderPdCal(); };
+window.rdCalNav=n=>{ const nm=rdCalM+n; if(nm<0||nm>11)return; rdCalM=nm; renderRdCal(); };
 window.pdCalPick=ds=>{ if(!pdStart||pdEnd){ pdStart=ds; pdEnd=null; } else { if(ds>=pdStart)pdEnd=ds; else { pdEnd=pdStart; pdStart=ds; } } renderPdCal(); if(pdStart&&pdEnd){ let cur=pdStart,g=0; while(cur<=pdEnd&&g<400){ if(!curPD.includes(cur))curPD.push(cur); cur=addDays(cur,1); g++; } curPD.sort(); renderPDTags(); pdStart=null; pdEnd=null; setTimeout(()=>{ const el=document.getElementById('pdCal'); if(el)el.style.display='none'; },250); } };
+window.rdCalPick=ds=>{ if(!rdStart||rdEnd){ rdStart=ds; rdEnd=null; } else { if(ds>=rdStart)rdEnd=ds; else { rdEnd=rdStart; rdStart=ds; } } renderRdCal(); if(rdStart&&rdEnd){ let cur=rdStart,g=0; while(cur<=rdEnd&&g<400){ if(!curRD.includes(cur))curRD.push(cur); cur=addDays(cur,1); g++; } curRD.sort(); renderRDTags(); rdStart=null; rdEnd=null; setTimeout(()=>{ const el=document.getElementById('rdCal'); if(el)el.style.display='none'; },250); } };
 const fmtNotes=arr=>Array.isArray(arr)?arr.map(n=>(n.d?fmtMD(n.d)+' ':'')+n.t).join(' / '):'';
 let curNotes=[];
 function renderNoteList(){ const el=document.getElementById('noteList'); if(!el)return; el.innerHTML=curNotes.map((n,idx)=>`<div class="note-item">${n.d?`<span class="ni-date">${fmtMD(n.d)}</span>`:''}<span class="ni-text">${esc(n.t)}</span><button type="button" onclick="removeNote(${idx})">×</button></div>`).join(''); }
@@ -842,7 +857,7 @@ function renderTable(){
   const rows=list.filter(i=>{ if(fr&&i.region!==fr)return false; if(fs&&i.status!==fs)return false; if(q&&!(`${i.name} ${i.manager} ${i.note||''}`.toLowerCase().includes(q)))return false; return true; });
   document.getElementById('tblTitle').textContent=`기관별 현황 (${rows.length})`;
   const tb=document.getElementById('tbody');
-  if(!rows.length){ tb.innerHTML=`<tr class="empty-row"><td colspan="10">조건에 맞는 기관이 없습니다.</td></tr>`; return; }
+  if(!rows.length){ tb.innerHTML=`<tr class="empty-row"><td colspan="9">조건에 맞는 기관이 없습니다.</td></tr>`; return; }
   const pill=(t,c)=>t?`<span class="pill" style="color:${c};background:${c}1a">${esc(t)}</span>`:'<span class="muted-cell">—</span>';
   const RO=['서울','경기','인천','강원','충청','전라','경상','제주'];
   const roIdx=r=>{const x=RO.indexOf(r);return x<0?99:x;};
@@ -868,10 +883,9 @@ function renderTable(){
       <td data-label="권역">${i.region?esc(i.region):'<span class="muted-cell">—</span>'}</td>
       <td class="mobile-title" data-label="기관명">${nameInner}<button class="detail-btn" onclick="event.stopPropagation();openDetail('${i.id}')">상세 ›</button></td>
       <td data-label="담당자">${(i.phone||i.manager)?`${i.phone?`<span class="mgr-phone">${esc(i.phone)}</span>`:''}${i.phone&&i.manager?' · ':''}${i.manager?esc(i.manager):''}`:'<span class="muted-cell">—</span>'}</td>
-      <td class="m-hide c-mid" data-label="교육">${pill(i.edu,ec)}</td><td class="c-mid" data-label="조사상태">${pill(i.status,sc)}</td>
-      <td class="c-mid" data-label="재발행상태">${i.reissueStatus?pill(i.reissueStatus,STATUS_COLORS[i.reissueStatus]||'#8896A8'):'<span class="muted-cell">—</span>'}</td>
+      <td class="m-hide c-mid" data-label="교육">${pill(i.edu,ec)}</td><td class="c-mid" data-label="조사상태"><div class="st-cell">${pill(i.status,sc)}${fmtPDGroup(i.progressDates)?`<span class="date-badge sm">${fmtPDGroup(i.progressDates)}</span>`:'<span class="st-nodate">—</span>'}</div></td>
+      <td class="c-mid" data-label="재발행상태"><div class="st-cell">${i.reissueStatus?pill(i.reissueStatus,STATUS_COLORS[i.reissueStatus]||'#8896A8'):'<span class="muted-cell">—</span>'}${fmtPDGroup(i.reissueDates)?`<span class="date-badge sm">${fmtPDGroup(i.reissueDates)}</span>`:'<span class="st-nodate">—</span>'}</div></td>
       <td class="m-hide c-mid" data-label="기준일자">${i.baseDate?fmtDate(i.baseDate):'<span class="muted-cell">—</span>'}</td>
-      <td class="c-mid" data-label="지원일자">${fmtPDGroup(i.progressDates)?`<span class="date-badge">${fmtPDGroup(i.progressDates)}</span>`:'<span class="muted-cell">—</span>'}</td>
       <td class="note-cell m-hide" data-label="특이사항" title="${esc(noteOneline)}">${notesCell}</td>
     </tr>`; };
   let html='', num=0;
@@ -914,6 +928,7 @@ function renderSummary(it){
   const pill=(t,c)=>t?`<span class="pill" style="color:${c};background:${c}1a">${esc(t)}</span>`:'<span class="muted-cell">미정</span>';
   const row=(l,v)=>`<div class="sum-item"><span class="sum-lbl">${l}</span><span class="sum-val">${v}</span></div>`;
   const pd=fmtPDGroup(it.progressDates);
+  const rd=fmtPDGroup(it.reissueDates);
   const supBase=it.baseSupport==='기타'?(esc(it.baseSupportEtc)||'기타'):(esc(it.baseSupport)||'—');
   const supBranch=it.branchSupport==='기타'?(esc(it.branchSupportEtc)||'기타'):(esc(it.branchSupport)||'—');
   const readers=(it.readers||[]).map(r=>`${esc(r.name)} ${r.qty}대`).join(', ')||'—';
@@ -930,7 +945,8 @@ function renderSummary(it){
       ${row('담당자',(it.phone?esc(it.phone)+' · ':'')+(esc(it.manager)||'—'))}
       ${row('교육',pill(it.edu,ec))}
       ${row('기준일자',it.baseDate?fmtDate(it.baseDate):'—')}
-      ${row('지원일자',pd?`<span class="date-badge">${pd}</span>`:'—')}
+      ${row('조사 지원일자',pd?`<span class="date-badge">${pd}</span>`:'—')}
+      ${row('재발행 지원일자',rd?`<span class="date-badge">${rd}</span>`:'—')}
       ${row('본청 지원방식',supBase)}
       ${row('외청 지원방식',supBranch)}
       ${row('물품수',fmtInt(it.total))}
@@ -981,7 +997,7 @@ function fillForm(i){
   { const gs=[...new Set(Object.values(DB.years).flat().map(x=>x.name).filter(Boolean))].sort(); const dl=document.getElementById('groupList'); if(dl)dl.innerHTML=gs.map(g=>`<option value="${esc(g)}">`).join(''); }
   f_manager.value=i?.manager||''; f_phone.value=i?.phone||''; f_edu.value=i?.edu||'';
   f_status.value=i?.status||''; f_reissueStatus.value=i?.reissueStatus||''; f_total.value=i?.total??''; f_read.value=i?.read??''; f_reissue.value=i?.reissue??'';
-  curReaders=Array.isArray(i?.readers)?i.readers.map(r=>({...r})):(i?.readerName?[{name:i.readerName,qty:i.readerQty||0}]:[]); curIssuers=Array.isArray(i?.issuers)?i.issuers.map(r=>({...r})):(i?.issuerName?[{name:i.issuerName,qty:i.issuerQty||0}]:[]); renderEquip(); f_baseDate.value=i?.baseDate||''; curPD=Array.isArray(i?.progressDates)?[...i.progressDates]:[]; renderPDTags(); pdStart=null; pdEnd=null; {const pc=document.getElementById('pdCal'); if(pc)pc.style.display='none';} curNotes=Array.isArray(i?.noteList)?i.noteList.map(n=>({...n})):(i?.note?[{d:'',t:i.note}]:[]); renderNoteList();
+  curReaders=Array.isArray(i?.readers)?i.readers.map(r=>({...r})):(i?.readerName?[{name:i.readerName,qty:i.readerQty||0}]:[]); curIssuers=Array.isArray(i?.issuers)?i.issuers.map(r=>({...r})):(i?.issuerName?[{name:i.issuerName,qty:i.issuerQty||0}]:[]); renderEquip(); f_baseDate.value=i?.baseDate||''; curPD=Array.isArray(i?.progressDates)?[...i.progressDates]:[]; renderPDTags(); pdStart=null; pdEnd=null; {const pc=document.getElementById('pdCal'); if(pc)pc.style.display='none';} curRD=Array.isArray(i?.reissueDates)?[...i.reissueDates]:[]; renderRDTags(); rdStart=null; rdEnd=null; {const rc=document.getElementById('rdCal'); if(rc)rc.style.display='none';} curNotes=Array.isArray(i?.noteList)?i.noteList.map(n=>({...n})):(i?.note?[{d:'',t:i.note}]:[]); renderNoteList();
   f_baseSupport.value=i?.baseSupport||''; f_baseSupportEtc.value=i?.baseSupportEtc||'';
   f_branchSupport.value=i?.branchSupport||''; f_branchSupportEtc.value=i?.branchSupportEtc||'';
   toggleEtc('base'); toggleEtc('branch');
@@ -999,7 +1015,8 @@ window.openDetail=id=>{ if(expandedId===id){ closeModal(); return; } const it=(D
 document.getElementById('modalX').onclick=closeModal;
 document.getElementById('modalCancel').onclick=closeModal;
 document.getElementById('f_pdRange').onclick=(e)=>{ e.stopPropagation(); openPdCal(); };
-document.addEventListener('click',e=>{ const cal=document.getElementById('pdCal'); if(cal&&cal.style.display!=='none'&&!cal.contains(e.target)&&e.target.id!=='f_pdRange'){cal.style.display='none';} });
+document.getElementById('f_rdRange').onclick=(e)=>{ e.stopPropagation(); openRdCal(); };
+document.addEventListener('click',e=>{ const cal=document.getElementById('pdCal'); if(cal&&cal.style.display!=='none'&&!cal.contains(e.target)&&e.target.id!=='f_pdRange'){cal.style.display='none';} const rcal=document.getElementById('rdCal'); if(rcal&&rcal.style.display!=='none'&&!rcal.contains(e.target)&&e.target.id!=='f_rdRange'){rcal.style.display='none';} });
 document.getElementById('addNote').onclick=()=>{ const d=document.getElementById('f_noteDate').value; const t=document.getElementById('f_noteText').value.trim(); if(!t){ document.getElementById('f_noteText').focus(); return; } curNotes.push({d,t}); curNotes.sort((a,b)=>(a.d||'zzz').localeCompare(b.d||'zzz')); renderNoteList(); document.getElementById('f_noteDate').value=''; document.getElementById('f_noteText').value=''; document.getElementById('f_noteText').focus(); };
 document.getElementById('addReader').onclick=()=>{ const n=document.getElementById('f_readerSel').value; const q=+document.getElementById('f_readerQtyIn').value||0; if(!n)return; const ex=curReaders.find(r=>r.name===n); if(ex)ex.qty=q; else curReaders.push({name:n,qty:q}); renderEquip(); document.getElementById('f_readerSel').value=''; document.getElementById('f_readerQtyIn').value=''; };
 document.getElementById('addIssuer').onclick=()=>{ const n=document.getElementById('f_issuerSel').value; const q=+document.getElementById('f_issuerQtyIn').value||0; if(!n)return; const ex=curIssuers.find(r=>r.name===n); if(ex)ex.qty=q; else curIssuers.push({name:n,qty:q}); renderEquip(); document.getElementById('f_issuerSel').value=''; document.getElementById('f_issuerQtyIn').value=''; };
@@ -1008,7 +1025,7 @@ document.getElementById('modalSave').onclick=()=>{
   const isEdit=!!editingId;
   const rec={ region:norm(f_region.value),name,group:norm(f_group.value),dept:norm(f_dept.value),manager:norm(f_manager.value),phone:norm(f_phone.value),
     edu:f_edu.value,status:f_status.value,reissueStatus:f_reissueStatus.value,total:numOrNull(f_total.value),read:numOrNull(f_read.value),reissue:numOrNull(f_reissue.value),
-    readers:curReaders.map(r=>({...r})),issuers:curIssuers.map(r=>({...r})),note:fmtNotes(curNotes),noteList:curNotes.map(n=>({...n})),baseDate:f_baseDate.value,progressDates:[...curPD],
+    readers:curReaders.map(r=>({...r})),issuers:curIssuers.map(r=>({...r})),note:fmtNotes(curNotes),noteList:curNotes.map(n=>({...n})),baseDate:f_baseDate.value,progressDates:[...curPD],reissueDates:[...curRD],
     baseSupport:f_baseSupport.value,baseSupportEtc:norm(f_baseSupportEtc.value),
     branchSupport:f_branchSupport.value,branchSupportEtc:norm(f_branchSupportEtc.value) };
   if(rec.total!=null){
