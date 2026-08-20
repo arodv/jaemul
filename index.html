@@ -190,7 +190,9 @@
   .sc-day.today{border-color:var(--scan);box-shadow:0 0 0 1px var(--scan) inset}
   .sc-dnum{font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:3px}
   .sc-dnum.sun{color:#D9534F}.sc-dnum.sat{color:#4A7FD9}
-  .sc-ev{font-size:11px;font-weight:700;padding:2px 5px;border-radius:4px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sc-ev{font-size:11px;font-weight:700;padding:3px 5px;border-radius:4px;margin-bottom:3px;cursor:pointer;display:flex;align-items:center;gap:4px;overflow:hidden}
+  .ev-tag{flex:0 0 auto;font-size:9px;font-weight:800;padding:1px 4px;border-radius:3px;background:rgba(255,255,255,.75);letter-spacing:-.3px}
+  .ev-nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ev-p{background:#E4F4EE;color:#1B7A5A}
   .ev-r{background:#FCEEDD;color:#B36A17}
   .sc-ev:hover{filter:brightness(.95)}
@@ -962,7 +964,7 @@ function renderSchedCal(){
     const ds=`${schedY}-${String(schedM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const items=map[ds]||[]; const dow=new Date(schedY,schedM,d).getDay();
     h+=`<div class="sc-day${items.length?' has':''}${ds===tds?' today':''}"><div class="sc-dnum${dow===0?' sun':''}${dow===6?' sat':''}">${d}</div>`;
-    items.slice(0,4).forEach(it=>{ h+=`<div class="sc-ev ${it.t==='조사'?'ev-p':'ev-r'}" onclick="openDetail('${it.id}')" title="${esc(it.n)} · ${it.t}">${esc(it.n)}</div>`; });
+    items.slice(0,4).forEach(it=>{ h+=`<div class="sc-ev ${it.t==='조사'?'ev-p':'ev-r'}" onclick="openDetail('${it.id}')" title="${esc(it.n)} · ${it.t==='조사'?'재물조사':'재발행'}"><span class="ev-tag">${it.t==='조사'?'조사':'재발행'}</span><span class="ev-nm">${esc(it.n)}</span></div>`; });
     if(items.length>4)h+=`<div class="sc-more">+${items.length-4}</div>`;
     h+='</div>';
   }
