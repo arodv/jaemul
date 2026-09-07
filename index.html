@@ -205,6 +205,7 @@
   .sum-status{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
   .sum-st-lbl{font-size:11px;color:var(--muted);font-weight:700}
   .pk-arrow{color:var(--scan-d);margin-right:7px;font-size:10px;display:inline-block;width:10px}
+  .self-badge{font-size:11px;font-weight:700;color:#4A6FA5;background:#E9F0F9;border-radius:5px;padding:2px 7px;margin-left:8px;vertical-align:middle}
   .kids-badge{font-size:11px;font-weight:700;color:var(--scan-d);background:#E8F3EE;border-radius:5px;padding:2px 7px;margin-left:8px;vertical-align:middle}
   tr.parent-row{cursor:pointer}
   tbody tr.clickrow.sub-row td.mobile-title .mt-name{padding-left:22px;position:relative}
@@ -568,10 +569,11 @@ function renderPDTags(){ const el=document.getElementById('pdTags'); if(!el)retu
 function renderRDTags(){ const el=document.getElementById('rdTags'); if(!el)return; const s=[...curRD].sort(); const groups=[]; if(s.length){ let st=s[0],pv=s[0]; for(let k=1;k<s.length;k++){ if(addDays(pv,1)===s[k]){pv=s[k];}else{groups.push([st,pv]);st=s[k];pv=s[k];} } groups.push([st,pv]); } el.innerHTML=groups.map(([a,z])=>{ const lbl=a===z?fmtMD(a):(a.split('-')[1]===z.split('-')[1]?`${fmtMD(a)}~${+z.split('-')[2]}`:`${fmtMD(a)}~${fmtMD(z)}`); return `<span class="pd-tag">${lbl}<button type="button" onclick="removeRDRange('${a}','${z}')">×</button></span>`; }).join(''); }
 window.removePDRange=(a,z)=>{ curPD=curPD.filter(d=>d<a||d>z); renderPDTags(); };
 window.removeRDRange=(a,z)=>{ curRD=curRD.filter(d=>d<a||d>z); renderRDTags(); };
-let pdCalY=2026, pdCalM=7, pdStart=null, pdEnd=null;
-let rdCalY=2026, rdCalM=7, rdStart=null, rdEnd=null;
-window.openPdCal=()=>{ const el=document.getElementById('pdCal'); const show=el.style.display==='none'; el.style.display=show?'block':'none'; if(show){ pdStart=null; pdEnd=null; renderPdCal(); } };
-window.openRdCal=()=>{ const el=document.getElementById('rdCal'); const show=el.style.display==='none'; el.style.display=show?'block':'none'; if(show){ rdStart=null; rdEnd=null; renderRdCal(); } };
+let pdCalY=2026, pdCalM=new Date().getMonth(), pdStart=null, pdEnd=null;
+let rdCalY=2026, rdCalM=new Date().getMonth(), rdStart=null, rdEnd=null;
+function curMonthIdx(y){ const n=new Date(); return n.getFullYear()===y?n.getMonth():0; }
+window.openPdCal=()=>{ const el=document.getElementById('pdCal'); const show=el.style.display==='none'; el.style.display=show?'block':'none'; if(show){ pdStart=null; pdEnd=null; pdCalY=+CUR||new Date().getFullYear(); pdCalM=curPD.length?(+curPD[curPD.length-1].split('-')[1]-1):curMonthIdx(pdCalY); renderPdCal(); } };
+window.openRdCal=()=>{ const el=document.getElementById('rdCal'); const show=el.style.display==='none'; el.style.display=show?'block':'none'; if(show){ rdStart=null; rdEnd=null; rdCalY=+CUR||new Date().getFullYear(); rdCalM=curRD.length?(+curRD[curRD.length-1].split('-')[1]-1):curMonthIdx(rdCalY); renderRdCal(); } };
 function renderPdCal(){ const el=document.getElementById('pdCal'); if(!el)return; const first=new Date(pdCalY,pdCalM,1), sd=first.getDay(), days=new Date(pdCalY,pdCalM+1,0).getDate(); let h=`<div class="pd-cal-head"><button type="button" onclick="pdCalNav(-1)">‹</button><b>${pdCalY}년 ${pdCalM+1}월</b><button type="button" onclick="pdCalNav(1)">›</button></div><div class="pd-cal-grid">`; ['일','월','화','수','목','금','토'].forEach(d=>h+=`<div class="dow">${d}</div>`); for(let k=0;k<sd;k++)h+=`<div class="pd-cal-day empty"></div>`; for(let d=1;d<=days;d++){ const ds=`${pdCalY}-${String(pdCalM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let cls='pd-cal-day'; if(ds===pdStart||ds===pdEnd)cls+=' sel'; else if(pdStart&&pdEnd&&ds>pdStart&&ds<pdEnd)cls+=' in-range'; h+=`<div class="${cls}" onclick="pdCalPick('${ds}')">${d}</div>`; } h+='</div><div class="pd-cal-hint">'+(pdStart&&!pdEnd?'👉 종료일을 클릭하세요':'시작일을 클릭하세요')+'</div>'; el.innerHTML=h; }
 function renderRdCal(){ const el=document.getElementById('rdCal'); if(!el)return; const first=new Date(rdCalY,rdCalM,1), sd=first.getDay(), days=new Date(rdCalY,rdCalM+1,0).getDate(); let h=`<div class="pd-cal-head"><button type="button" onclick="rdCalNav(-1)">‹</button><b>${rdCalY}년 ${rdCalM+1}월</b><button type="button" onclick="rdCalNav(1)">›</button></div><div class="pd-cal-grid">`; ['일','월','화','수','목','금','토'].forEach(d=>h+=`<div class="dow">${d}</div>`); for(let k=0;k<sd;k++)h+=`<div class="pd-cal-day empty"></div>`; for(let d=1;d<=days;d++){ const ds=`${rdCalY}-${String(rdCalM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; let cls='pd-cal-day'; if(ds===rdStart||ds===rdEnd)cls+=' sel'; else if(rdStart&&rdEnd&&ds>rdStart&&ds<rdEnd)cls+=' in-range'; h+=`<div class="${cls}" onclick="rdCalPick('${ds}')">${d}</div>`; } h+='</div><div class="pd-cal-hint">'+(rdStart&&!rdEnd?'👉 종료일을 클릭하세요':'시작일을 클릭하세요')+'</div>'; el.innerHTML=h; }
 window.pdCalNav=n=>{ const nm=pdCalM+n; if(nm<0||nm>11)return; pdCalM=nm; renderPdCal(); };
@@ -899,17 +901,19 @@ function renderTable(){
   rows.forEach(i=>{ if(!isTop(i))(childMap[i.group]=childMap[i.group]||[]).push(i); });
   const tops=rows.filter(isTop);
   tops.sort((a,b)=>{ const ra=roIdx(a.region),rb=roIdx(b.region); if(ra!==rb)return ra-rb; return (a.name||'').localeCompare(b.name||''); });
-  const mkRow=(i,idx,sub)=>{
+  const mkRow=(i,idx,sub,self)=>{
     const sc=STATUS_COLORS[i.status]||'#8896A8', ec=EDU_COLORS[i.edu]||'#8896A8';
     const noteOneline=(i.note||'').replace(/\s+/g,' ').trim();
     const noteItems=Array.isArray(i.noteList)&&i.noteList.length?i.noteList:(i.note?[{d:'',t:i.note}]:[]);
     const notesCell=noteItems.length?`<div class="note-lines">${noteItems.map(n=>`<div class="note-line">${n.d?`<b>${fmtMD(n.d)}</b>`:''}<span>${esc(n.t)}</span></div>`).join('')}</div>`:'<span class="muted-cell">—</span>';
     const kids=childMap[i.name]||[]; const hasKids=!sub&&kids.length>0; const open=EXG.has(i.name);
-    const nameInner = hasKids
+    const nameInner = self
+      ? `<span class="mt-name">${esc(i.name)||'—'}</span><span class="self-badge">본청</span>`
+      : (hasKids
       ? `<span class="pk-arrow">${open?'▼':'▶'}</span><span class="mt-name">${esc(i.name)||'—'}</span><span class="kids-badge">외 ${kids.length}곳</span>`
-      : `<span class="mt-name">${esc(i.name)||'—'}</span>`;
-    const clickAttr = hasKids ? `onclick="toggleGroup('${esc(i.name)}')"` : `onclick="openDetail('${i.id}')"`;
-    return `<tr class="clickrow${i.region==='인천'?' rg-in':''}${sub?' sub-row':''}${hasKids?' parent-row':''}" data-id="${i.id}" style="--sc:${sc}" ${clickAttr}>
+      : `<span class="mt-name">${esc(i.name)||'—'}</span>`);
+    const clickAttr = (hasKids&&!self) ? `onclick="toggleGroup('${esc(i.name)}')"` : `onclick="openDetail('${i.id}')"`;
+    return `<tr class="clickrow${i.region==='인천'?' rg-in':''}${sub?' sub-row':''}${(hasKids&&!self)?' parent-row':''}"${self?'':` data-id="${i.id}"`} style="--sc:${sc}" ${clickAttr}>
       <td class="num" data-label="연번">${idx}</td>
       <td data-label="권역">${i.region?esc(i.region):'<span class="muted-cell">—</span>'}</td>
       <td class="mobile-title" data-label="기관명">${nameInner}<button class="detail-btn" onclick="event.stopPropagation();openDetail('${i.id}')">상세 ›</button></td>
@@ -924,6 +928,7 @@ function renderTable(){
     num++; html+=mkRow(top,num,false);
     const kids=childMap[top.name]||[];
     if(kids.length && EXG.has(top.name)){
+      num++; html+=mkRow(top,num,true,true);
       kids.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).forEach(k=>{ num++; html+=mkRow(k,num,true); });
     }
   });
@@ -941,8 +946,9 @@ function renderStatusBar(){
     .forEach(k=>{ const c=STATUS_COLORS[k]||'#8896A8'; html+=`<div class="status-chip ${cur===k?'active':''}" onclick="filterStatus('${k}')"><span class="dot" style="background:${c}"></span><span>${esc(k)}</span><span class="n">${counts[k]}</span></div>`; });
   document.getElementById('statusBar').innerHTML=html+`<div class="cal-toggle${calOpen?' on':''}" onclick="toggleSchedCal()">📅 일정 달력 ${calOpen?'▲':'▼'}</div>`;
 }
-let calOpen=false, schedY=2026, schedM=7;
-window.toggleSchedCal=()=>{ calOpen=!calOpen; document.getElementById('schedCal').classList.toggle('hidden',!calOpen); if(calOpen)renderSchedCal(); renderStatusBar(); };
+let calOpen=false, schedY=2026, schedM=new Date().getMonth();
+function syncSchedMonth(){ const now=new Date(); const y=+CUR||now.getFullYear(); schedY=y; schedM=(now.getFullYear()===y)?now.getMonth():0; }
+window.toggleSchedCal=()=>{ calOpen=!calOpen; document.getElementById('schedCal').classList.toggle('hidden',!calOpen); if(calOpen){ syncSchedMonth(); renderSchedCal(); } renderStatusBar(); };
 window.schedNav=n=>{ const nm=schedM+n; if(nm<0||nm>11)return; schedM=nm; renderSchedCal(); };
 function renderSchedCal(){
   const el=document.getElementById('schedCal'); if(!el)return;
